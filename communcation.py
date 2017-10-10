@@ -44,7 +44,7 @@ if __name__ == '__main__':
         bytesize=serial.EIGHTBITS,
         timeout=0)  # set time-out higher if we want to wait for input
 
-    print("connected to: " + ser.portstr)
+    print("connected to: " + ser.portsgtr)
 
     # Create two threads, 1 sending data, 1 receiving data
     sender = threading.Thread(target=send_data_to_controller)
