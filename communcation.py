@@ -1,6 +1,9 @@
 import serial  # python -m pip install pyserial OR apt-get install python3-serial
 import re
 import threading
+import random
+import time
+import sys
 
 
 def send_data_to_controller():
@@ -18,6 +21,19 @@ def send_data_to_controller():
 
 def write(string):
     ser.write(str(string).encode("utf-8"))
+
+
+def send_random_data_to_controller(t=1):
+    # Valid commands are numbers between 0 and 180
+    while True:
+        x = random.randint(0, 180)
+        y = random.randint(0, 180)
+        print(x, y)
+        ser.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
+        ser.write(32)  # space
+        ser.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
+        ser.write(10)  # new line
+        time.sleep(t)
 
 
 def read_data_from_controller():
