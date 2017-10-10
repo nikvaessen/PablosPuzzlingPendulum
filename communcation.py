@@ -12,7 +12,6 @@ def send_data_to_controller():
             y = int(numbers[1])
             print(x, y)
             write("{},{}\n".format(x, y))
-
         else:
             print("Input needs to be in the form 'digit,digit'")
 
@@ -29,7 +28,7 @@ def read_data_from_controller():
     while True:
         for c in ser.read():
             line.append(c)
-            if c == '\n':
+            if c == 10:
                 print("Line: " + str(line))
                 line = []
 
@@ -44,7 +43,7 @@ if __name__ == '__main__':
         bytesize=serial.EIGHTBITS,
         timeout=0)  # set time-out higher if we want to wait for input
 
-    print("connected to: " + ser.portsgtr)
+    print("connected to: " + ser.port)
 
     # Create two threads, 1 sending data, 1 receiving data
     sender = threading.Thread(target=send_data_to_controller)

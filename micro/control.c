@@ -7,6 +7,8 @@ void setup() {
   // put your setup code here, to run once:
   s1.attach(30);
   s2.attach(31);
+
+  Serial.begin(9600);
 }
 
 void loop() {
