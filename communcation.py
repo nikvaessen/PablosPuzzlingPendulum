@@ -6,7 +6,7 @@ import time
 import sys
 
 
-def send_data_to_controller():
+def send_human_data_to_controller():
     while True:
         x = input("Command: ")
         if re.match('^[0-9]*,[0-9]*$', x):
@@ -23,17 +23,31 @@ def write(string):
     ser.write(str(string).encode("utf-8"))
 
 
+def write_int(x, y):
+    ser.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
+    ser.write(32)  # space
+    ser.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
+    ser.write(10)  # new line
+
+
 def send_random_data_to_controller(t=1):
     # Valid commands are numbers between 0 and 180
     while True:
         x = random.randint(0, 180)
         y = random.randint(0, 180)
         print(x, y)
-        ser.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
-        ser.write(32)  # space
-        ser.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
-        ser.write(10)  # new line
+        write_int(x, y)
         time.sleep(t)
+
+
+def send_oscillating_data_to_controller(amp=30, center=90, f=1):
+    while True:
+        x = 90  # keep the bottom actuator stable
+        y = center + amp
+        print(x, y)
+        write_int(x, y)
+        amp = -amp
+        time.sleep(f/2)
 
 
 def read_data_from_controller():
@@ -62,7 +76,7 @@ if __name__ == '__main__':
     print("connected to: " + ser.port)
 
     # Create two threads, 1 sending data, 1 receiving data
-    sender = threading.Thread(target=send_data_to_controller)
+    sender = threading.Thread(target=send_human_data_to_controller)
     receiver = threading.Thread(target=read_data_from_controller)
 
     sender.start()
