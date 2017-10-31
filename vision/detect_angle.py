@@ -63,7 +63,6 @@ if __name__ == "__main__":
             image = cam.capture()
             if debug:
                 t = datetime.time(datetime.now())
-                print(t)
                 cv2.imwrite("debug/img_" + str(t) + ".jpg", image)
             angle = det.detect(cam.capture())
             print(angle)
