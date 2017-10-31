@@ -1,48 +1,73 @@
+from __future__ import division
+
 import cv2
+import time
+import picamera
 import numpy as np
-
-image = cv2.imread('test_images/bottomPendu.JPG')
-image = cv2.resize(image, (1200, 600))
-
-# create NumPy arrays from the boundaries
-# order: blue, green, red
-lower = np.array([110, 135, 200])
-upper = np.array([140, 165, 230])
-
-# find the colors within the specified boundaries and apply
-# the mask, in range --> white, out of range --> black
-mask = cv2.inRange(image, lower, upper)
-output = cv2.bitwise_and(image, image, mask=mask)
-
-# save images
-cv2.imwrite("out1.png", image)
-cv2.imwrite("out2.png", output)
-
-# calculate edges
-edges = cv2.Canny(mask, 50, 150, apertureSize=3)
-cv2.imwrite("out3.png", edges)
-
-# calculate lines and display them on original image
-lines = cv2.HoughLines(edges, 1, np.pi/360, 50)
-
-if lines is None:
-    print("No lines :(")
-    exit()
-
-for i in range(0, lines.shape[0]):
-    for rho, theta in lines[i]:
-        print("Degree: " + str(theta * 180 / np.pi))
-
-        a = np.cos(theta)
-        b = np.sin(theta)
-        x0 = a*rho
-        y0 = b*rho
-        x1 = int(x0 + 1000 * -b)
-        y1 = int(y0 + 1000 * a)
-        x2 = int(x0 - 1000 * -b)
-        y2 = int(y0 - 1000 * a)
-
-        cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 1)
+import time
 
 
-cv2.imwrite('out4.png', image)
+class Camera:
+	
+	def __init__(self, resolution):
+		self.camera = picamera.PiCamera()
+		self.resolution = resolution
+		self.camera.resolution = resolution
+		#self.camera.framerate = 24
+		
+	def capture(self):
+		image = np.empty((240 * 320 * 3,), dtype=np.uint8)
+		self.camera.capture(image, 'bgr')
+		image = image.reshape((240, 320, 3))
+		return image
+
+
+class Detector:
+	
+	def __init__(self, lower, upper):
+		self.lower = lower
+		self.upper = upper
+		
+	def detect(self, image):
+		# find the colors within the specified boundaries and apply
+		# the mask, in range --> white, out of range --> black
+		mask = cv2.inRange(image, lower, upper)
+		
+		# calculate edges on the mask
+		edges = cv2.Canny(mask, 50, 150, apertureSize=3)
+
+		# calculate lines on the mask image
+		lines = cv2.HoughLines(edges, 1, np.pi/360, 50)
+		
+		# calculate most likely degree based on the radian
+		# angle returned from the lines
+		if lines is None:
+			raise ValueError("No lines detected")
+		
+		return sum([x[1] for x in lines]) / len(lines)
+
+
+if __name__ == "__main__":
+	from datetime import datetime
+	
+	debug = True
+	
+	lower = np.array([110, 135, 200])
+	upper = np.array([140, 165, 230])
+	resolution = (320, 240)
+	
+	det = Detector(lower, upper)
+	cam = Camera(resolution)
+	
+	while True:
+		time.sleep(1)
+		try:
+			image = cam.capture()
+			if debug:
+				t = datetime.time(datetime.now())
+				print(t)
+				cv2.imwrite("debug/img_" + str(t) +".jpg", image)
+			angle = det.detect(cam.capture())
+			print(angle)
+		except ValueError:
+			print("No angle measured")
