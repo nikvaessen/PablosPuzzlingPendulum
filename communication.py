@@ -66,7 +66,8 @@ def read_data_from_controller():
 if __name__ == '__main__':
     # open serial connection
     ser = serial.Serial(
-        port='/dev/ttyUSB0',
+        # port='/dev/ttyUSB0', # Nik
+        port='/dev/cu.usbmodem1411', # Jose
         baudrate=9600,  # this needs to be set on micro-controller by doing Serial.begin(9600)
         parity=serial.PARITY_NONE,  # check parity of UC32, maybe it's even/odd
         stopbits=serial.STOPBITS_ONE,
