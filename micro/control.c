@@ -46,6 +46,6 @@ void loop() {
     int jl = analogRead(POTENTIOMETER_LOWER_JOINT);
     int ju = analogRead(POTENTIOMETER_UPPER_JOINT);
 
-    Serial.printf("%d, %d, %d", p, jl, ju);
+    Serial.printf("%d, %d, %d\n", p, jl, ju);
   }
 }
