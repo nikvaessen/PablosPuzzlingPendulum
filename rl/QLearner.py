@@ -123,3 +123,10 @@ class Tabular(object):
         """
         return max(self.lr, min(0.5, 1.0 - math.log10((episode+1)/25)))
 
+################################################################################
+#  A Q-learning class in network form
+
+
+class Network(object):
+    # TODO implement a neural network
+    pass
