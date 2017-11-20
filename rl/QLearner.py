@@ -1,33 +1,76 @@
 import numpy as np
+import random as r
+import math
+
 
 class QLearner(object):
 
-    def __init__(self, env, learning_rate, maximum_discount):
-        self.env = env
-        self.obs_s = env.observation_space
-        self.act_s = env.action_space
-        self.Q = np.zeros(self.obs_s.n, self.act_s.n)
+    def __init__(self, environment, num_of_obs, state_bounds,
+                 learning_rate, maximum_discount, exploration_rate):
+        self.env = environment
+        self.obs = num_of_obs
+        self.bounds = state_bounds
+        self.act = self.env.action_space
         self.lr = learning_rate
         self.gamma = maximum_discount
+        self.er = exploration_rate
+        self.Q = np.zeros(self.obs + (self.act.n,))
+        print(self.Q.shape)
 
-    def run_n_episodes(self, n, initial_state, max_movements_in_episode):
+    def run_n_episodes(self, n, max_movements_in_episode):
 
-        for i in range(n):
-            s = initial_state
-            r_all = 0
-            d = False
-            j = 0
+        for episode in range(n):
+            s = self.state_from_obs(self.env.reset())
+            lr = self.get_learning_rate(episode)
 
-            while j < max_movements_in_episode or d is True:
-                j += 0
-                # choose action by greedily (with noise) picking from Q
-                a = np.argmax(self.Q[s, :] + np.random.randn(1, self.act_s.n) * (1./(i+1)))
+            for m in range(max_movements_in_episode):
+                self.env.render()
 
-                # Get new state and reward from environment
-                s1, r, d, _ = self.env.step(a)
+                # an Action a
+                a = self.select_action(s, episode)
 
-                self.Q[s, a] += self.lr * (r + self.gamma * np.max(self.Q[s1, :]) - self.Q[s, a])
-                r_all += r
+                observation, reward, done, _ = self.env.step(a)
+
+                s1 = self.state_from_obs(observation)
+
+                # Update the Q based on the result
+                best = np.amax(self.Q[s1])
+                self.Q[s + (a,)] += lr * (reward + self.gamma * best - self.Q[s + (a,)])
+
                 s = s1
 
-        self.rList.append(r_all)
+                if done:
+                    # print("Episode {} finished after {} movements".format(episode, m))
+                    break
+        print(self.Q)
+
+    def state_from_obs(self, obs):
+        indice = []
+        for i in range(len(obs)):
+            if obs[i] <= self.bounds[i][0]:
+                index = 0
+            elif obs[i] >= self.bounds[i][1]:
+                index = self.obs[i] - 1
+            else:
+                bound_width = self.bounds[i][0] - self.bounds[i][1]
+                offset = (self.obs[i]-1) * self.bounds[i][0]/bound_width
+                scaling = (self.obs[i]-1)/bound_width
+                index = int(round(scaling * obs[i] - offset))
+            indice.append(index)
+        # print("observation: {} yields state: {}".format(obs, tuple(indice)))
+        return tuple(indice)
+
+    def select_action(self, state, episode):
+        if r.random() < self.get_explore_rate(episode):
+            return self.env.action_space.sample()
+        else:
+            return np.argmax(self.Q[state])
+
+    # get exploration rate depending on episode
+    def get_explore_rate(self, episode):
+        return max(self.er, min(1.0, 1.0 - math.log10((episode+1)/25)))
+
+    # get learning rate depending on episode
+    def get_learning_rate(self,episode):
+        return max(self.lr, min(0.5, 1.0 - math.log10((episode+1)/25)))
+

@@ -14,7 +14,7 @@
 import sys, math
 import numpy as np
 
-import Box2D
+#import Box2D
 
 import gym
 from gym import spaces
@@ -23,15 +23,22 @@ from gym.utils import colorize, seeding
 ################################################################################
 # The environment class doing the simulation work
 
+import communcation
 
 class RobotArm(gym.Env):
     """
     The Environment class responsible for the simulation
     """
 
-    def __init__(self):
-        self.world = Box2D.b2World()
-        body = self.world.CreateBody(Box2D.b2BodyDef())
+    def __init__(self, time_step = 15, low = 0, high=1000, intervals =10 ):
+        # self.world = Box2D.b2World()
+        # body = self.world.CreateBody(Box2D.b2BodyDef())
+        # change to find right partition of space
+        self.time_step = time_step
+        self.potentiometer = self.createMapForJoint(low, high, intervals)
+        self.joint1 = (0, 0)
+        self.joint2 = (0, 0)
+        self.pendulum = (0, 0)
 
         pass
 
@@ -82,6 +89,12 @@ class RobotArm(gym.Env):
             info (dict): contains auxiliary diagnostic information (helpful for
                          debugging, and sometimes learning)
         """
+        # State in shape of (j1.pos, j2.pos, p.pos)
+        state = communcation.get_state()
+        self.joint1 = self.updateJoint(self.joint1, state[0])
+        self.joint2 = self.updateJoint(self.joint2, state[1])
+
+
 
         pass
 
@@ -128,6 +141,29 @@ class RobotArm(gym.Env):
             space.
         """
         pass
+
+################################################################################
+    def createMapForJoint(self, low, high, intervals):
+        def f(x):
+            range1 = high - low
+            x = x - low
+            size = range1/intervals
+            return x/size - x % size * 1/size
+
+        return map(f, range(low, high))
+
+    def updateJoint(self, joint, new_pos):
+        new_pos = self.potentiometer[new_pos]
+        new_vel = (joint[0] - new_pos) / self.time_step;
+        return new_pos, new_vel
+
+    def updatePendullumState(self, new_position):
+        new_pos = self.potentiometer[new_position]
+        new_acc = self.pendulum
+
+
+
+
 
 
 ################################################################################

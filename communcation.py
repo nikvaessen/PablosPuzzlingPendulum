@@ -63,6 +63,11 @@ def read_data_from_controller():
                 line = []
 
 
+def get_state():
+    """Here we want to get a tuple that represents the state from the micro controller"""
+    return ()
+
+
 if __name__ == '__main__':
     # open serial connection
     ser = serial.Serial(
