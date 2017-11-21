@@ -4,7 +4,9 @@
 #
 ################################################################################
 #
-# Author(s): Nik Vaessen
+# Author(s): Pablo Soto
+#            Nik Vaessen
+#            Jose Velasquez
 #
 # This file is distributed under the MIT license. For a copy, check the LICENSE
 # file in the root directory or check https://opensource.org/licenses/MIT.
@@ -17,6 +19,7 @@ import numpy as np
 #import Box2D
 
 import gym
+from gym.spaces import Box
 from gym import spaces
 from gym.utils import colorize, seeding
 
@@ -25,24 +28,22 @@ from gym.utils import colorize, seeding
 
 import communcation
 
+
 class RobotArm(gym.Env):
     """
     The Environment class responsible for the simulation
     """
+    # TODO rewrite to use with gym.spaces.Box
 
-    def __init__(self, time_step = 15, low = 0, high=1000, intervals =10 ):
+    def __init__(self, time_step=15):
         # self.world = Box2D.b2World()
         # body = self.world.CreateBody(Box2D.b2BodyDef())
         # change to find right partition of space
         self.time_step = time_step
-        self.potentiometer = self.createMapForJoint(low, high, intervals)
         self.joint1 = (0, 0)
         self.joint2 = (0, 0)
         self.pendulum = (0, 0)
-
-        pass
-
-
+        self.swing_up = True
 
 ################################################################################
 # Properties which need to be set to create a valid Environment.
@@ -53,7 +54,9 @@ class RobotArm(gym.Env):
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task
-    observation_space = None
+
+    # TODO:                     low        high (check any openAI environment)
+    observation_space = Box(np.array(), np.array())
 
 ################################################################################
 # Abstract methods which need to be overridden to create a valid Environment.
@@ -93,10 +96,21 @@ class RobotArm(gym.Env):
         state = communcation.get_state()
         self.joint1 = self.updateJoint(self.joint1, state[0])
         self.joint2 = self.updateJoint(self.joint2, state[1])
+        self.pendulum = self.update_pendulum(state[2])
+        state = np.array(self.joint1[0], self.joint1[1],
+                         self.joint2[0], self.joint2[1],
+                         self.pendulum[0], self.pendulum[1])
 
+        reward = None
+        done = None
+        if self.swing_up:
+            # TODO: implement reward and done for swing up
+            pass
+        else:
+            # TODO: implement reward and done for balancing
+            pass
 
-
-        pass
+        return state, reward, done, {}
 
     def _render(self, mode='human', close=False):
         """Renders the environment.
@@ -143,28 +157,14 @@ class RobotArm(gym.Env):
         pass
 
 ################################################################################
-    def createMapForJoint(self, low, high, intervals):
-        def f(x):
-            range1 = high - low
-            x = x - low
-            size = range1/intervals
-            return x/size - x % size * 1/size
 
-        return map(f, range(low, high))
-
-    def updateJoint(self, joint, new_pos):
-        new_pos = self.potentiometer[new_pos]
-        new_vel = (joint[0] - new_pos) / self.time_step;
+    def update_joint(self, joint, new_pos):
+        new_vel = (joint[0] - new_pos) / self.time_step
         return new_pos, new_vel
 
-    def updatePendullumState(self, new_position):
-        new_pos = self.potentiometer[new_position]
-        new_acc = self.pendulum
-
-
-
-
-
+    def update_pendulum(self, new_position):
+        new_vel = (new_position - self.pendulum[0]) / self.time_step
+        return new_position, new_vel
 
 ################################################################################
 
