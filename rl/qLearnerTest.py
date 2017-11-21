@@ -6,6 +6,8 @@ import math
 # env 1 CartPole-v0
 
 env1 = gym.make('CartPole-v0')
+json = env1.observation_space.to_jsonable(env1.action_space.sample())
+print(json)
 # number areas per space
 # (pos, vel, angle, angular_vel)
 obs1 = (1, 1, 6, 3)
