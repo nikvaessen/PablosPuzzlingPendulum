@@ -26,8 +26,7 @@ from gym.utils import colorize, seeding
 ################################################################################
 # The environment class doing the simulation work
 
-import communcation
-
+import communication
 
 class RobotArm(gym.Env):
     """
