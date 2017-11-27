@@ -4,6 +4,7 @@ import serial
 import argparse
 import time
 from collections import deque
+from deadzone import Deadzone
 
 # parsing arguments
 buf = 3
@@ -22,15 +23,10 @@ y_vals = [deque([0] * buf) for _ in range(0, nr_outputs)]
 previous = time.time()
 previous_vel = 0
 interval = interval * 0.001
-critical_val = 10
-flag = False
-flag2 = False
 
-lower_range = range(0, critical_val)
-upper_range = range(1023 - critical_val + 1, critical_val + 1)
-wrong_range = range(critical_val * 3, 1023 - critical_val * 3)
+thing = 1
 
-thing = 2
+dz = Deadzone()
 
 while True:
     ser.write('req\n'.encode())
@@ -51,7 +47,7 @@ while True:
                     y_val.pop()
                     y_val.appendleft(val[i])
             
-            flag2 = True
+            dz.activate()
         except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
             print('FAILED TO READ DATA, INSTEAD GOT:')
             try:
@@ -60,26 +56,17 @@ while True:
             except Exception as e:
                 pass
 
-    if flag2:
-        # need to check whether dead zone was entered
-        if not flag and y_vals[thing][0] < critical_val or abs(y_vals[thing][0] - 1023) < critical_val:
-            #print('entered critical range')
-            flag = True
+    print(dz.clean_val(y_vals[thing][0]))
 
-        if flag and not y_vals[thing][0] in wrong_range and y_vals[thing][0] > critical_val and abs(y_vals[thing][0] - 1023) > critical_val:
-            #print('exited critical range')
-            flag = False
+    '''
+    if y_vals[thing][0] > 600:
+        result = y_vals[thing][0] - 600
+    else:
+        diff = 600 - y_vals[thing][0]
+        result = 1023 - diff
+    '''
 
-        if flag and y_vals[thing][0] in wrong_range:
-            y_vals[thing][0] = 0
-
-        if y_vals[thing][0] > 600:
-            result = y_vals[thing][0] - 600
-        else:
-            diff = 600 - y_vals[thing][0]
-            result = 1023 - diff
-
-        #print(result)
-        print(-(y_vals[0][0] - 660), y_vals[1][0] - 540, result)
+    #print(result)
+    #print(-(y_vals[0][0] - 660), y_vals[1][0] - 540, result)
 
     time.sleep(interval)
