@@ -1,4 +1,4 @@
-import serial  # python -m pip install pyserial OR apt-get install python3-serial
+import serial # python -m pip install pyserial OR apt-get install python3-serial
 import re
 import threading
 import random
@@ -20,14 +20,14 @@ def send_human_data_to_controller():
 
 
 def write(string):
-    ser.write(str(string).encode("utf-8"))
+    serial.write(str(string).encode("utf-8"))
 
 
 def write_int(x, y):
-    ser.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
-    ser.write(32)  # space
-    ser.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
-    ser.write(10)  # new line
+    serial.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
+    serial.write(32)  # space
+    serial.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
+    serial.write(10)  # new line
 
 
 def send_random_data_to_controller(t=1):
@@ -56,7 +56,7 @@ def read_data_from_controller():
 
     # infinite loop checking for input from micro-controller
     while True:
-        for c in ser.read():
+        for c in serial.read():
             line.append(c)
             if c == 10:
                 print("Line: " + str(line))
@@ -75,7 +75,7 @@ class Communicator:
     write_motor_token = "WRITE".encode()
     failure_token = "FAILURE".encode()
 
-    def __init__(self, usb_port, baudrate):
+    def __init__(self, usb_port, baudrate=9600):
         # open serial connection
         self.ser = serial.Serial(
             # port='/dev/ttyUSB0', # Nik

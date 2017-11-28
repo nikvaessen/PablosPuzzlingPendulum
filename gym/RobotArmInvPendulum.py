@@ -20,8 +20,7 @@ import numpy as np
 
 import gym
 from gym.spaces import Box
-from gym import spaces
-from gym.utils import colorize, seeding
+from communication.communication import Communicator
 
 ################################################################################
 # The environment class doing the simulation work
@@ -34,10 +33,11 @@ class RobotArm(gym.Env):
     """
     # TODO rewrite to use with gym.spaces.Box
 
-    def __init__(self, time_step=15):
+    def __init__(self, usb_port, time_step=15):
         # self.world = Box2D.b2World()
         # body = self.world.CreateBody(Box2D.b2BodyDef())
         # change to find right partition of space
+        self.com = Communicator(usb_port=usb_port)
         self.time_step = time_step
         self.joint1 = (0, 0)
         self.joint2 = (0, 0)
@@ -92,7 +92,7 @@ class RobotArm(gym.Env):
                          debugging, and sometimes learning)
         """
         # State in shape of (j1.pos, j2.pos, p.pos)
-        state = communcation.get_state()
+        state = self.com.observe_state()
         self.joint1 = self.updateJoint(self.joint1, state[0])
         self.joint2 = self.updateJoint(self.joint2, state[1])
         self.pendulum = self.update_pendulum(state[2])

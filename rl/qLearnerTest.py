@@ -1,4 +1,4 @@
-from rl import QLearner as ql
+import rl.QLearner as ql
 import gym
 import math
 
@@ -20,7 +20,7 @@ bounds1[1] = [-0.5, 0.5]
 bounds1[3] = [-math.radians(50), math.radians(50)]
 # print(bounds1)
 learner1 = ql.Tabular(env1, obs1, bounds1)
-learner1.run_n_episodes(200, 10000)
+learner1.run_n_episodes(2000, 10000)
 
 ################################################################################
 # env 2 MountainCar-v0
