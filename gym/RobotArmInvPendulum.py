@@ -74,7 +74,7 @@ class RobotArm(gym.Env):
               'seed'. Often, the main seed equals the provided 'seed', but
               this won't be true if seed=None, for example.
         """
-        return super()._seed(seed)
+        return super._seed(seed)
 
     def _step(self, action):
         """Run one timestep of the environment's dynamics. When end of
@@ -145,7 +145,7 @@ class RobotArm(gym.Env):
                           super(MyEnv, self).render(mode=mode) # just raise an
                           exception
               """
-        super()._render(mode, close)
+        super._render(mode, close)
 
     def _reset(self):
         """Resets the state of the environment and returns an initial

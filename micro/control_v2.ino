@@ -1,5 +1,4 @@
-#include <Servo.h>
-
+#include "Servo.h"
 const unsigned long UPDATE_INTERVAL = 1000; // ms
 
 const int POTENTIOMETER_PENDULUM    = A0;
@@ -11,7 +10,7 @@ const String WRITE_MOTOR_COMMANDS_TOKEN = "WRITE";
 const String FAILURE_TOKEN = "FAILURE";
 const int NEWLINE_INT = 10;
 
-String req
+String req;
 
 Servo s1;
 Servo s2;
@@ -35,6 +34,7 @@ void loop() {
   if(Serial.available() > 0)
   {
     String token = Serial.readStringUntil('\n');
+    
     if(READ_POTENTIOMETERS_TOKEN.equals(token))
     {
         Serial.print(analogRead(POTENTIOMETER_PENDULUM));
@@ -48,28 +48,28 @@ void loop() {
         // something went wrong
         Serial.println(FAILURE_TOKEN);
       }
-    }
-    else if(WRITE_MOTOR_COMMANDS_TOKEN.equals(token))
-    {
+      
+      if(WRITE_MOTOR_COMMANDS_TOKEN.equals(token))
+      {
        int motor1 = Serial.parseInt();
        int motor2 = Serial.parseInt();
 
-       if(Serial.read() == NEWLINE_INT)
-       {
-          //s1.write(motor1);
-          //s2.write(motor2);
-          Serial.printf("%d %d\n", motor1, motor2);
-       }
-       else
-       {
-         Serial.println(FAILURE_TOKEN);
-       }
-    }
+         if(Serial.read() == NEWLINE_INT)
+         {
+            //s1.write(motor1);
+            //s2.write(motor2);
+            Serial.printf("%d %d\n", motor1, motor2);
+         }
+         else
+         {
+           Serial.println(FAILURE_TOKEN);
+         }
+      }
     else
-    {
+      {
        //sent failure token because we don't know what we just read :(
        Serial.println(FAILURE_TOKEN);
-    }
+      }
   }
 }
 
