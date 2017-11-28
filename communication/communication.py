@@ -1,4 +1,4 @@
-import serial # python -m pip install pyserial OR apt-get install python3-serial
+import serial  # python -m pip install pyserial OR apt-get install python3-serial
 import re
 import threading
 import random
@@ -63,12 +63,6 @@ def read_data_from_controller():
                 line = []
 
 
-def get_state():
-    """Here we want to get a tuple that represents the state from the micro controller"""
-
-    return ()
-
-
 class Communicator:
 
     request_data_token = "READ".encode()
@@ -106,6 +100,7 @@ class Communicator:
                     pass
 
     def send_command(self, motor1, motor2):
+        self.ser.write(Communicator.write_motor_token + "\n".encode())
         self.ser.write(motor1)
         self.ser.write(" ".encode())
         self.ser.write(motor2)
