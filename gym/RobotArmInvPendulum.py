@@ -166,6 +166,7 @@ class RobotArm(gym.Env):
 
     range_motor = ()
     def reward(self, pendulum,  motor1, motor2):
+        # TODO: do this
         pass
 
 
