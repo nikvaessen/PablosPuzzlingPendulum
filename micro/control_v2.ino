@@ -26,7 +26,7 @@ void setup() {
   pinMode(POTENTIOMETER_LOWER_JOINT, INPUT);
   pinMode(POTENTIOMETER_UPPER_JOINT, INPUT);
 
-  Serial.begin(250000);
+  Serial.begin(9600);
 }
 
 void loop() {
@@ -34,7 +34,7 @@ void loop() {
   if(Serial.available() > 0)
   {
     String token = Serial.readStringUntil('\n');
-    
+
     if(READ_POTENTIOMETERS_TOKEN.equals(token))
     {
         Serial.print(analogRead(POTENTIOMETER_PENDULUM));
@@ -42,34 +42,32 @@ void loop() {
         Serial.print(analogRead(POTENTIOMETER_LOWER_JOINT));
         Serial.print(" ");
         Serial.println(analogRead(POTENTIOMETER_UPPER_JOINT));
-      }
-      else
-      {
-        // something went wrong
-        Serial.println(FAILURE_TOKEN);
-      }
-      
-      if(WRITE_MOTOR_COMMANDS_TOKEN.equals(token))
-      {
+    }
+    else if(WRITE_MOTOR_COMMANDS_TOKEN.equals(token))
+    {
        int motor1 = Serial.parseInt();
        int motor2 = Serial.parseInt();
 
-         if(Serial.read() == NEWLINE_INT)
-         {
-            //s1.write(motor1);
-            //s2.write(motor2);
-            Serial.printf("%d %d\n", motor1, motor2);
-         }
-         else
-         {
-           Serial.println(FAILURE_TOKEN);
-         }
-      }
+       if(motor1 >= 0 && motor1 <= 180 && motor2 >= 0 && motor2 <= 180)
+       {
+          s1.write(motor1);
+          s2.write(motor2);
+          //Serial.printf("%d %d\n", motor1, motor2);
+       }
+       else
+       {
+         Serial.println(FAILURE_TOKEN);
+       }
+    }
     else
-      {
+    {
        //sent failure token because we don't know what we just read :(
-       Serial.println(FAILURE_TOKEN);
-      }
+       Serial.print(FAILURE_TOKEN);
+       Serial.print(" ");
+       Serial.println("token received: ");
+       Serial.print(" ");
+       Serial.println(token);
+    }
   }
 }
 
