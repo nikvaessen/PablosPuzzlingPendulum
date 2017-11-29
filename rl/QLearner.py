@@ -14,7 +14,8 @@ import numpy as np
 import random as r
 import math
 import tensorflow as tf
-
+from keras.models import Sequential
+from keras.layers import Dense
 ################################################################################
 # A Q-learning class in tabular form
 ################################################################################
@@ -148,22 +149,12 @@ class Network(QLearner):
     def __init__(self, environment, num_of_obs, state_bounds,
                  lr=0.1, maximum_discount=0.99, exploration_rate=0.01):
         super(Network, self).__init__(environment, num_of_obs, state_bounds, lr, maximum_discount, exploration_rate)
+        self.s, self.q_values, q_network = self.build_network()
+        q_network_weights = q_network.trainable_weights
 
-        tf.reset_default_graph()
-        self.inputs1 = tf.placeholder(dtype=tf.float32, shape=[1, len(num_of_obs)])
-        self.W = tf.Variable(tf.random_uniform([len(num_of_obs), self.act.n]))
-        self.Qout = tf.matmul(self.inputs1, self.W)
-        self.predict = tf.argmax(self.Qout, 1)
-        self.nextQ = tf.placeholder(dtype=tf.float32, shape=[1, self.act.n])
-        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
-        self.trainer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
-        self.updateModel = self.trainer.minimize(self.loss)
-        self.init = tf.initialize_all_variables()
 
     def run_n_episodes(self, n, max_movements_in_episode):
 
-        with tf.Session() as sess:
-            sess.run(self.init)
             for episode in range(n):
                 s = self.state_from_obs(self.env.reset())
                 movements = 0
@@ -171,19 +162,7 @@ class Network(QLearner):
                 for m in range(max_movements_in_episode):
                     self.env.render()
 
-                    a, allQ = sess.run([self.predict, self.Qout],
-                                       feed_dict={self.inputs1:np.identity(len(self.obs))[s:s+1]})
-                    a[0] = self.select_action(s,episode)
-                    s1, reward, done, _ = self.env.step(a[0])
-
-                    Q1 = sess.run(self.Qout, feed_dict={self.inputs1:np.identity(16)[s1:s1+1]})
-                    maxQ1 = np.max(Q1)
-                    targetQ = allQ
-                    targetQ[0, a[0]] = reward + self.gamma * maxQ1
-
-                    _, W1 = sess.run([self.updateModel,self.W],
-                                    feed_dict={self.inputs1:np.identity(16)[s:s+1], self.nextQ:targetQ})
-
+                    s1, reward, done, _ = self.env.step()
                     s = s1
 
                     if done:
@@ -194,4 +173,10 @@ class Network(QLearner):
                 print("Episode: {}\n \t finished after {} movements".format(episode+1, movements+1))
 
 
+    def build_network(self):
+        model = Sequential()
+        model.add(Dense(self.act.n, activation='relu', input_shape=self.obs))
+        s = tf.placeholder(dtype=tf.float32, shape=self.obs)
+        q_values = model(s)
 
+        return s, q_values, model
