@@ -9,3 +9,4 @@ while True:
     change = -change
     sleep(0.3)
     com.send_command(90 + change, 90 + change)
+    print(com.observe_state())

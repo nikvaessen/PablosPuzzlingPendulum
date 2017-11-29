@@ -20,14 +20,14 @@ def send_human_data_to_controller():
 
 
 def write(string):
-    ser.write(str(string).encode("utf-8"))
+    serial.write(str(string).encode("utf-8"))
 
 
 def write_int(x, y):
-    ser.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
-    ser.write(32)  # space
-    ser.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
-    ser.write(10)  # new line
+    serial.write(int.to_bytes(x, length=8, byteorder=sys.byteorder))
+    serial.write(32)  # space
+    serial.write(int.to_bytes(y, length=8, byteorder=sys.byteorder))
+    serial.write(10)  # new line
 
 
 def send_random_data_to_controller(t=1):
@@ -56,24 +56,57 @@ def read_data_from_controller():
 
     # infinite loop checking for input from micro-controller
     while True:
-        for c in ser.read():
+        for c in serial.read():
             line.append(c)
             if c == 10:
                 print("Line: " + str(line))
                 line = []
 
 
-if __name__ == '__main__':
-    # open serial connection
-    ser = serial.Serial(
-        port='/dev/ttyUSB0',
-        baudrate=9600,  # this needs to be set on micro-controller by doing Serial.begin(9600)
-        parity=serial.PARITY_NONE,  # check parity of UC32, maybe it's even/odd
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=0)  # set time-out higher if we want to wait for input
+class Communicator:
 
-    print("connected to: " + ser.port)
+    request_data_token = "READ\n".encode()
+    write_motor_token = "WRITE\n".encode()
+    failure_token = "FAILURE".encode()
+
+    def __init__(self, usb_port, baudrate=9600):
+        # open serial connection
+        self.ser = serial.Serial(
+            # port='/dev/ttyUSB0', # Nik
+            # port='/dev/cu.usbmodem1411',  # Jose
+            port=usb_port,
+            baudrate=baudrate,  # this needs to be set on micro-controller by doing Serial.begin(9600)
+            parity=serial.PARITY_NONE,  # check parity of UC32, maybe it's even/odd
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            timeout=1)  # set time-out higher if we want to wait for input
+
+        print("Serial connection established over port " + self.ser.port)
+
+    def observe_state(self):
+        self.ser.write(Communicator.request_data_token)
+
+        try:
+            line = self.ser.readline()
+            numbers = line.strip().decode('ASCII').split(' ')
+            return [int(x) for x in numbers]
+        except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
+            print('FAILED TO READ DATA, INSTEAD GOT:')
+            try:
+                if line:
+                    print(line.strip().decode(), end='\n\n')
+            except Exception as e:
+                print(e)
+                pass
+
+    def send_command(self, motor1, motor2):
+        self.ser.write(Communicator.write_motor_token)
+        self.ser.write(str(motor1).encode())
+        self.ser.write(" ".encode())
+        self.ser.write(str(motor2).encode())
+
+
+if __name__ == '__main__':
 
     # Create two threads, 1 sending data, 1 receiving data
     sender = threading.Thread(target=send_human_data_to_controller)
