@@ -31,7 +31,7 @@ class RobotArm(gym.Env):
     """
     The Environment class responsible for the simulation
     """
-    # TODO rewrite to use with gym.spaces.Box
+    # TODO rewrite to use with ourgym.spaces.Box
 
     def __init__(self, usb_port, time_step=15):
         # self.world = Box2D.b2World()
@@ -42,6 +42,7 @@ class RobotArm(gym.Env):
         self.joint1 = (0, 0)
         self.joint2 = (0, 0)
         self.pendulum = (0, 0)
+        self.max_distance = np.linalg.norm(self.center - self.observation_space.low)
         self.swing_up = True
 
 ################################################################################
@@ -49,13 +50,16 @@ class RobotArm(gym.Env):
 
     # The action space defines all possible actions which can be taken during
     # one episode of the task
-    action_space = None
+    action_space = None #todo action space plz
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task
 
     # TODO:                     low        high (check any openAI environment)
-    observation_space = Box(np.array(), np.array())
+    observation_space = Box(np.array([0, 260, 260]), np.array([1024, 800, 800]))
+    center = np.array([600, 600, 600])
+    # lower motor max/right=800 min/left=260
+    # upper motor max/right=
 
 ################################################################################
 # Abstract methods which need to be overridden to create a valid Environment.
@@ -100,7 +104,7 @@ class RobotArm(gym.Env):
                          self.joint2[0], self.joint2[1],
                          self.pendulum[0], self.pendulum[1])
 
-        reward = self.reward(self.pendulum[0], self.joint1[0], self.joint2[0])
+        reward = self.reward(state)
         done = None
         if self.swing_up:
             # TODO: implement reward and done for swing up
@@ -164,13 +168,11 @@ class RobotArm(gym.Env):
         new_vel = (new_position - self.pendulum[0]) / self.time_step
         return new_position, new_vel
 
-    range_motor = ()
-    def reward(self, pendulum,  motor1, motor2):
-        # TODO: do this
-        pass
-
+    def reward(self, state):
+        d = np.linalg.norm(state - self.center)
+        if d > self.max_distance:
+            return 0
+        else:
+            return 1 - (d / self.max_distance)
 
 ################################################################################
-
-if __name__ == '__main__':
-    print("Hello World")

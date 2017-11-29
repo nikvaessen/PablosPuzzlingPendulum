@@ -19,13 +19,13 @@ bounds1 = list(zip(env1.observation_space.low, env1.observation_space.high))
 bounds1[1] = [-0.5, 0.5]
 bounds1[3] = [-math.radians(50), math.radians(50)]
 # print(bounds1)
-learner1 = ql.Network(env1, obs1, bounds1)
+learner1 = ql.Tabular(env1, obs1, bounds1)
 learner1.run_n_episodes(2000, 10000)
 
 ################################################################################
 # env 2 MountainCar-v0
 """
-env2 = gym.make('MountainCar-v0')
+env2 = ourgym.make('MountainCar-v0')
 obs2 = (18, 14)
 bounds2 = list(zip(env2.observation_space.low, env2.observation_space.high))
 # print(bounds2)
