@@ -165,6 +165,11 @@ class RobotArm(gym.Env):
         new_vel = (new_position - self.pendulum[0]) / self.time_step
         return new_position, new_vel
 
+    range_motor = ()
+    def reward(self, pendulum,  motor1, motor2):
+        pass
+
+
 ################################################################################
 
 if __name__ == '__main__':

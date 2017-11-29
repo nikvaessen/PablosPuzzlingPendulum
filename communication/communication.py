@@ -65,8 +65,8 @@ def read_data_from_controller():
 
 class Communicator:
 
-    request_data_token = "READ".encode()
-    write_motor_token = "WRITE".encode()
+    request_data_token = "READ\n".encode()
+    write_motor_token = "WRITE\n".encode()
     failure_token = "FAILURE".encode()
 
     def __init__(self, usb_port, baudrate=9600):
@@ -79,32 +79,31 @@ class Communicator:
             parity=serial.PARITY_NONE,  # check parity of UC32, maybe it's even/odd
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
-            timeout=0)  # set time-out higher if we want to wait for input
+            timeout=1)  # set time-out higher if we want to wait for input
 
         print("Serial connection established over port " + self.ser.port)
 
     def observe_state(self):
         self.ser.write(Communicator.request_data_token)
-        while self.ser.in_waiting > 0:
+
+        try:
+            line = self.ser.readline()
+            numbers = line.strip().decode('ASCII').split(' ')
+            return [int(x) for x in numbers]
+        except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
+            print('FAILED TO READ DATA, INSTEAD GOT:')
             try:
-                line = self.ser.readline()
-                numbers = line.strip().decode('ASCII').split(' ')
-                return numbers
-            except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
-                print('FAILED TO READ DATA, INSTEAD GOT:')
-                try:
-                    if line:
-                        print(line.strip().decode(), end='\n\n')
-                except Exception as e:
-                    print(e)
-                    pass
+                if line:
+                    print(line.strip().decode(), end='\n\n')
+            except Exception as e:
+                print(e)
+                pass
 
     def send_command(self, motor1, motor2):
-        self.ser.write(Communicator.write_motor_token + "\n".encode())
-        self.ser.write(motor1)
+        self.ser.write(Communicator.write_motor_token)
+        self.ser.write(str(motor1).encode())
         self.ser.write(" ".encode())
-        self.ser.write(motor2)
-        self.ser.write("\n".encode())
+        self.ser.write(str(motor2).encode())
 
 
 if __name__ == '__main__':
