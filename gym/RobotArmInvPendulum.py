@@ -100,7 +100,7 @@ class RobotArm(gym.Env):
                          self.joint2[0], self.joint2[1],
                          self.pendulum[0], self.pendulum[1])
 
-        reward = None
+        reward = self.reward(self.pendulum[0], self.joint1[0], self.joint2[0])
         done = None
         if self.swing_up:
             # TODO: implement reward and done for swing up
@@ -156,7 +156,6 @@ class RobotArm(gym.Env):
         pass
 
 ################################################################################
-
     def update_joint(self, joint, new_pos):
         new_vel = (joint[0] - new_pos) / self.time_step
         return new_pos, new_vel
@@ -167,6 +166,7 @@ class RobotArm(gym.Env):
 
     range_motor = ()
     def reward(self, pendulum,  motor1, motor2):
+        # TODO: do this
         pass
 
 
