@@ -69,6 +69,9 @@ class Communicator:
     write_motor_token = "WRITE\n".encode()
     failure_token = "FAILURE".encode()
 
+    lower_joint_offset = -10
+    upper_joint_offset = -15
+
     def __init__(self, usb_port, baudrate=9600):
         # open serial connection
         self.ser = serial.Serial(
@@ -101,9 +104,23 @@ class Communicator:
 
     def send_command(self, motor1, motor2):
         self.ser.write(Communicator.write_motor_token)
-        self.ser.write(str(motor1).encode())
+        self.ser.write(str(motor1 + Communicator.lower_joint_offset).encode())
         self.ser.write(" ".encode())
-        self.ser.write(str(motor2).encode())
+        self.ser.write(str(motor2 + Communicator.upper_joint_offset).encode())
+
+
+class Converter:
+
+    def __init__(self,
+                 offset_pot=50,
+                 offset_bot=720,
+                 offset_top=495,
+                 range=[0, 180]):
+        self.offsets = [offset_pot, offset_bot, offset_top]
+        self.range = range
+
+    def convert_vals(self, vals):
+        return vals
 
 
 if __name__ == '__main__':

@@ -1,11 +1,19 @@
-from communication.communication import Communicator
+import sys
+import os.path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../communication'))
+
+from communication.com import Communicator
 from time import sleep
-from ourgym import RobotArm
+#from ourgym import RobotArm
 import math
 import rl.QLearner as ql
 
 
 port = "/dev/cu.usbserial-A6003X31" #on mac for jose, pablo and nik
+if sys.platform == 'linux' or sys.platform == 'linux2':
+    port = '/dev/ttyUSB0'
+elif sys.platform == 'win32':
+    port = 'COM4'
 
 def robotEnv():
     env1 = RobotArm(usb_port=port)
@@ -27,8 +35,13 @@ def robotEnv():
 
 def move_test():
     port = "/dev/cu.usbserial-A6003X31"
+    if sys.platform == 'linux' or sys.platform == 'linux2':
+        port = '/dev/ttyUSB0'
+    elif sys.platform == 'win32':
+        port = 'COM4'
+
     com = Communicator(usb_port=port, baudrate=9600)
-    change = 10
+    change = 15
 
     while True:
         change = -change
@@ -37,4 +50,5 @@ def move_test():
         print(com.observe_state())
 
 if __name__ == '__main__':
-    robotEnv()
+    #robotEnv()
+    move_test()

@@ -20,7 +20,7 @@ import numpy as np
 
 import gym
 from gym.spaces import Box
-from communication.communication import Communicator
+from communication.com import Communicator
 
 ################################################################################
 # The environment class doing the simulation work
