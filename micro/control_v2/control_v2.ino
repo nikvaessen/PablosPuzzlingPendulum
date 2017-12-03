@@ -18,7 +18,9 @@ Servo s2;
 unsigned long prev_update_timestamp = 0;
 
 // for dead zone adjustment
-int critical_value = 10;
+int critical_value = 15;
+int max_allowed_distance = 30;
+int last_value = 0, llast_value = 0;
 int pot_range = 1023;
 bool in_critical_zone = false;
 
@@ -33,22 +35,25 @@ void setup() {
     pinMode(POTENTIOMETER_LOWER_JOINT, INPUT);
     pinMode(POTENTIOMETER_UPPER_JOINT, INPUT);
 
+    last_value = analogRead(POTENTIOMETER_PENDULUM);
+    llast_value = last_value;
+
     Serial.begin(9600);
 }
 
 void loop() {
-    int temp = adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM));
-    Serial.print(analogRead(POTENTIOMETER_PENDULUM));
+    /*Serial.print(temp);
+    Serial.print(" (");
+    Serial.print(reading);
+    Serial.print(")");
     Serial.print(" ");
-    Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
-    Serial.print(" ");
-    Serial.println(in_critical_zone);
+    Serial.println(in_critical_zone);*/
     if (Serial.available() > 0) {
         String token = Serial.readStringUntil('\n');
 
         if (READ_POTENTIOMETERS_TOKEN.equals(token)) {
-            //Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
-            Serial.print(analogRead(POTENTIOMETER_PENDULUM));
+            Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
+            //Serial.print(analogRead(POTENTIOMETER_PENDULUM));
             Serial.print(" ");
             Serial.print(analogRead(POTENTIOMETER_LOWER_JOINT));
             Serial.print(" ");
@@ -72,18 +77,22 @@ void loop() {
             Serial.print(" ");
             Serial.println(token);
         }
+    } else {
+        int temp = adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM));
     }
 }
 
 int adjust_for_deadzone(int pot) {
-    if (!in_critical_zone && !in_range(pot, critical_value, pot_range - critical_value)) {
+    if (!in_critical_zone && (!in_range(pot, critical_value, pot_range - critical_value) || abs(last_value - pot) + abs(llast_value - last_value) > max_allowed_distance)) {
         in_critical_zone = true;
     }
-    if (in_critical_zone && (in_range(pot, critical_value, critical_value * 2) || in_range(pot, pot_range - critical_value * 2, pot_range - critical_value))) {
+    if (in_critical_zone && abs(last_value - pot) + abs(llast_value - last_value) <= max_allowed_distance && (in_range(pot, critical_value, critical_value * 2) || in_range(pot, pot_range - critical_value * 2, pot_range - critical_value))) {
         in_critical_zone = false;
     }
-    if (in_critical_zone && in_range(pot, critical_value * 2, pot_range - critical_value * 2)) {
-        return 0;
+    llast_value = last_value;
+    last_value = pot;
+    if (in_critical_zone && in_range(pot, critical_value, pot_range - critical_value)) {
+        pot = 0;
     }
     return pot;
 }

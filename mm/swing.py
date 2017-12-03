@@ -10,10 +10,11 @@ import time
 class SwingController:
     def __init__(self, com):
         self.com = com
-        self.change = 15
+        self.change = 10
         self.previous_pos = None
         self.previous_vel = None
         self.converter = Converter()
+        self.previous = 0
 
     def step(self):
         state = self.com.observe_state()
@@ -34,16 +35,22 @@ class SwingController:
         #sys.stdout.write('\rPrevious: {:d}, Current: {:d}, Velocity: {:d}'.format(self.previous_pos, pendulum_pos, current_vel))
         #sys.stdout.flush()
         print('Previous: {:d}, Current: {:d}, Velocity: {:d}'.format(self.previous_pos, pendulum_pos, current_vel))
-        if abs(current_vel) > 1 and np.sign(current_vel) != np.sign(self.previous_vel):
+        #print('Velocity: {:d}'.format(current_vel))
+        '''
+        if 1 < abs(current_vel) < 20 and np.sign(current_vel) != np.sign(self.previous_vel):
             self.previous_vel = current_vel
             print('Change in direction')
-            #ser.write('mov '.encode() + str(current_pos).encode() + '\n'.encode())
+        '''
         self.previous_pos = pendulum_pos
 
-        #self.com.send_command(90 + self.change, 90 + self.change)
-        self.change = -self.change
+        current = time.time()
+        if (current - self.previous) > 3.0:
+            self.previous = current
+            self.com.send_command(90 + self.change, 90 + self.change)
+            self.change = -self.change
 
-        time.sleep(0.03)
+
+        #time.sleep(0.3)
 
     def controllable_location(self):
         return False

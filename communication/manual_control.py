@@ -1,4 +1,4 @@
-from com import Communicator
+from com import Communicator, Converter
 import sys
 import time
 
@@ -9,15 +9,17 @@ elif sys.platform == 'win32':
     port = 'COM4'
 
 com = Communicator(usb_port='/dev/ttyUSB0')
+conv = Converter()
 while True:
-    '''
+
     commands = input('Command: ').split(' ')
     
     if commands[0] == 'read':
-        print(com.observe_state())
+        print(conv.convert_vals(com.observe_state()))
     else:
         com.send_command(int(commands[0]), int(commands[1]))
     '''
     #com.ser.write('READ\n'.encode())
     print(com.observe_state())
+    '''
     time.sleep(0.01)
