@@ -10,9 +10,14 @@ elif sys.platform == 'win32':
 
 com = Communicator(usb_port='/dev/ttyUSB0')
 while True:
+    '''
     commands = input('Command: ').split(' ')
+    
     if commands[0] == 'read':
         print(com.observe_state())
     else:
         com.send_command(int(commands[0]), int(commands[1]))
+    '''
+    #com.ser.write('READ\n'.encode())
+    print(com.observe_state())
     time.sleep(0.01)

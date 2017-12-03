@@ -1,4 +1,4 @@
-#include "Servo.h"
+#include <Servo.h>
 const unsigned long UPDATE_INTERVAL = 1000; // ms
 
 const int POTENTIOMETER_PENDULUM    = A0;
@@ -18,7 +18,7 @@ Servo s2;
 unsigned long prev_update_timestamp = 0;
 
 // for dead zone adjustment
-int critical_value = 20;
+int critical_value = 10;
 int pot_range = 1023;
 bool in_critical_zone = false;
 
@@ -38,11 +38,17 @@ void setup() {
 
 void loop() {
     int temp = adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM));
+    Serial.print(analogRead(POTENTIOMETER_PENDULUM));
+    Serial.print(" ");
+    Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
+    Serial.print(" ");
+    Serial.println(in_critical_zone);
     if (Serial.available() > 0) {
         String token = Serial.readStringUntil('\n');
 
         if (READ_POTENTIOMETERS_TOKEN.equals(token)) {
-            Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
+            //Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
+            Serial.print(analogRead(POTENTIOMETER_PENDULUM));
             Serial.print(" ");
             Serial.print(analogRead(POTENTIOMETER_LOWER_JOINT));
             Serial.print(" ");
@@ -73,10 +79,10 @@ int adjust_for_deadzone(int pot) {
     if (!in_critical_zone && !in_range(pot, critical_value, pot_range - critical_value)) {
         in_critical_zone = true;
     }
-    if (in_critical_zone && (in_range(pot, critical_value, critical_value * 3) || in_range(pot, pot_range - critical_value * 3, pot_range - critical_value))) {
+    if (in_critical_zone && (in_range(pot, critical_value, critical_value * 2) || in_range(pot, pot_range - critical_value * 2, pot_range - critical_value))) {
         in_critical_zone = false;
     }
-    if (in_critical_zone && in_range(pot, critical_value * 3, pot_range - critical_value * 3)) {
+    if (in_critical_zone && in_range(pot, critical_value * 2, pot_range - critical_value * 2)) {
         return 0;
     }
     return pot;

@@ -112,19 +112,18 @@ class Communicator:
 class Converter:
 
     def __init__(self,
-                 offset_pot=50,
+                 offset_pend=50,
                  offset_bot=720,
                  offset_top=495,
                  range=[0, 180]):
-        self.offsets = [offset_pot, offset_bot, offset_top]
+        self.offsets = [offset_pend, offset_bot, offset_top]
         self.range = range
 
     def convert_vals(self, vals):
-        return vals
+        return vals[0] - 620 if vals[0] > 620 else 1023 + (vals[0] - 620), vals[1], vals[2]
 
 
 if __name__ == '__main__':
-
     # Create two threads, 1 sending data, 1 receiving data
     sender = threading.Thread(target=send_human_data_to_controller)
     receiver = threading.Thread(target=read_data_from_controller)
