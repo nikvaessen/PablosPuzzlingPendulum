@@ -97,21 +97,22 @@ class RobotArm(gym.Env):
         """
         # State in shape of (j1.pos, j2.pos, p.pos)
         state = self.com.observe_state()
-        self.joint1 = self.updateJoint(self.joint1, state[0])
-        self.joint2 = self.updateJoint(self.joint2, state[1])
+        self.joint1 = self.update_joint(self.joint1, state[0])
+        self.joint2 = self.update_joint(self.joint2, state[1])
         self.pendulum = self.update_pendulum(state[2])
         state = np.array(self.joint1[0], self.joint1[1],
                          self.joint2[0], self.joint2[1],
                          self.pendulum[0], self.pendulum[1])
 
         reward = self.reward(state)
-        done = None
+        done = False
+
         if self.swing_up:
-            # TODO: implement reward and done for swing up
-            pass
+            if reward > 0.95:
+                self.swing_up = True
         else:
-            # TODO: implement reward and done for balancing
-            pass
+            if reward < 0.6:
+                done = True
 
         return state, reward, done, {}
 
