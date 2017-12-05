@@ -36,7 +36,7 @@ def learn():
     print("bounds" + str(bounds1))
 
     learner = ql.Tabular(env1, obs1, bounds1)
-    learner.run_n_episodes(100, 10000)
+    learner.run_n_episodes(100, 1000)
 
 def move_test():
     port = "/dev/cu.usbserial-A6003X31"
