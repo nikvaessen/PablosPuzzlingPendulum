@@ -84,6 +84,7 @@ class Communicator:
             bytesize=serial.EIGHTBITS,
             timeout=1)  # set time-out higher if we want to wait for input
 
+        time.sleep(5)
         print("Serial connection established over port " + self.ser.port)
 
     def observe_state(self):

@@ -15,17 +15,37 @@
 
 import sys, math
 import numpy as np
-
+import time
 #import Box2D
 
 import gym
-from gym.spaces import Box
+from gym.spaces import Box, Discrete
 from communication.com import Communicator
+
+################################################################################
+# discrete action space for robot env
+
+
+class DiscreteAction(Discrete):
+
+    def __init__(self, n, lower, upper, stepsize):
+        super(DiscreteAction, self).__init__(n)
+        self.actions = [0 for _ in range(0, n)]
+
+        idx = 0
+        for i in range(lower, upper, stepsize):
+            for j in range(lower, upper, stepsize):
+                self.actions[idx] = (i, j)
+                idx += 1
+
+
+    def sample(self):
+        return self.actions[super(DiscreteAction, self).sample()]
+
 
 ################################################################################
 # The environment class doing the simulation work
 
-import communication
 
 class RobotArm(gym.Env):
     """
@@ -50,16 +70,16 @@ class RobotArm(gym.Env):
 
     # The action space defines all possible actions which can be taken during
     # one episode of the task
-    action_space = None #todo action space plz
+    action_space = DiscreteAction(256, 50, 130, 5)
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task
 
-    # TODO:                     low        high (check any openAI environment)
-    observation_space = Box(np.array([0, 260, 260]), np.array([1024, 800, 800]))
-    center = np.array([600, 600, 600])
-    # lower motor max/right=800 min/left=260
-    # upper motor max/right=
+    observation_space = Box(np.array([0, 400, 400]), np.array([1020, 600, 600]))
+    center = np.array([600, 530, 510])
+    # lower motor max/left=600     min/right=400
+    # upper motor max/left=600     min/right=400
+    # center = [600, 530, 510]
 
 ################################################################################
 # Abstract methods which need to be overridden to create a valid Environment.
@@ -95,26 +115,22 @@ class RobotArm(gym.Env):
             info (dict): contains auxiliary diagnostic information (helpful for
                          debugging, and sometimes learning)
         """
-        # State in shape of (j1.pos, j2.pos, p.pos)
-        state = self.com.observe_state()
-        self.joint1 = self.update_joint(self.joint1, state[0])
-        self.joint2 = self.update_joint(self.joint2, state[1])
-        self.pendulum = self.update_pendulum(state[2])
-        state = np.array(self.joint1[0], self.joint1[1],
-                         self.joint2[0], self.joint2[1],
-                         self.pendulum[0], self.pendulum[1])
+        self.com.send_command(action[0], action[1])
+        time.sleep(0.1)
+        state = self._get_current_state()
 
-        reward = self.reward(state)
+        reward = self._reward(state)
         done = False
 
         if self.swing_up:
-            if reward > 0.95:
-                self.swing_up = True
+            if reward > 0.8:
+                self.swing_up = False
         else:
-            if reward < 0.6:
+            if reward < 0.4:
                 done = True
 
         return state, reward, done, {}
+
 
     def _render(self, mode='human', close=False):
         """Renders the environment.
@@ -150,7 +166,7 @@ class RobotArm(gym.Env):
                           super(MyEnv, self).render(mode=mode) # just raise an
                           exception
               """
-        super._render(mode, close)
+        pass
 
     def _reset(self):
         """Resets the state of the environment and returns an initial
@@ -158,22 +174,66 @@ class RobotArm(gym.Env):
         Returns: observation (object): the initial observation of the
             space.
         """
-        pass
+        self.com.send_command(90, 90)
+        self.swing_up = True
+        time.sleep(8)
+        return self._get_current_state()
 
 ################################################################################
-    def update_joint(self, joint, new_pos):
+    def _update_joint(self, joint, new_pos):
         new_vel = (joint[0] - new_pos) / self.time_step
-        return new_pos, new_vel
+        return new_pos
 
-    def update_pendulum(self, new_position):
+    def _update_pendulum(self, new_position):
         new_vel = (new_position - self.pendulum[0]) / self.time_step
         return new_position, new_vel
 
-    def reward(self, state):
-        d = np.linalg.norm(state - self.center)
-        if d > self.max_distance:
+    def _reward(self, state):
+        j2 = state[2]
+        if j2 > 510:
+            j2 = 510 - abs(510 - j2)
+        else:
+            j2 = 510 + abs(510 - j2)
+
+        target = 600 - (state[1] - 520) + (j2 - 510)
+        current = state[0]
+        dist = self.joses_madness(target, current)
+        max_dist = 512
+
+        if dist > max_dist:
             return 0
         else:
-            return 1 - (d / self.max_distance)
+            return 1 - (dist / max_dist)
+
+
+    def _get_current_state(self):
+        # State in shape of (j1.pos, j2.pos, p.pos)
+        state = self.com.observe_state()
+        self.pendulum = state[0]
+        self.joint1 = state[1]
+        self.joint2 = state[2]
+        state = np.array([self.pendulum, self.joint1, self.joint2])
+        return state
+
+    def joses_madness(self, t, c):
+        d = 0
+        if t + 512 > 1024:
+            if c > t:
+                d = c - t
+            elif c >= t - 512:
+                d = t - c
+            else:
+                d = 1024 - t + c
+        else:
+            if c < t:
+                d = t - c
+            elif c <= t + 512:
+                d = c - t
+            else:
+                d = t + (1024 - c)
+
+        return d
 
 ################################################################################
+
+
