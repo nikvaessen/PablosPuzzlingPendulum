@@ -14,6 +14,10 @@ import numpy as np
 import random as r
 import math
 import tensorflow as tf
+import time
+
+from gym import Env
+from gym.spaces import Discrete, Box
 from keras.models import Sequential
 from keras.layers import Dense
 
@@ -24,7 +28,7 @@ from keras.layers import Dense
 
 class QLearner(object):
 
-    def __init__(self, environment, num_of_obs, state_bounds,
+    def __init__(self, environment:Env, num_of_obs, state_bounds,
                  learning_rate=0.1, maximum_discount=0.99, exploration_rate=0.01):
         self.env = environment
         self.obs = num_of_obs
@@ -52,7 +56,7 @@ class QLearner(object):
             elif obs[i] >= self.bounds[i][1]:
                 index = self.obs[i] - 1
             else:
-                bound_width = self.bounds[i][0] - self.bounds[i][1]
+                bound_width = self.bounds[i][1] - self.bounds[i][0]
                 offset = (self.obs[i]-1) * self.bounds[i][0]/bound_width
                 scaling = (self.obs[i]-1)/bound_width
                 index = int(round(scaling * obs[i] - offset))
@@ -69,8 +73,10 @@ class QLearner(object):
         :return: an action on the environment
         """
         if r.random() < self.get_explore_rate(episode):
+            print("random sample")
             return self.env.action_space.sample()
         else:
+            print("took argmax")
             return np.argmax(self.Q[state])
 
     def get_explore_rate(self, episode):
@@ -97,11 +103,19 @@ class Tabular(QLearner):
     A tabular implementation of Q-Learning
     """
 
-    def __init__(self, environment, num_of_obs, state_bounds,
+    def __init__(self, environment:Env, num_of_obs, state_bounds,
                  learning_rate=0.1, maximum_discount=0.99, exploration_rate=0.01):
         super(Tabular, self).__init__(environment, num_of_obs, state_bounds,
                                       learning_rate, maximum_discount, exploration_rate)
-        self.Q = np.zeros(self.obs + (self.act.n,))
+        n = 0
+        if isinstance(self.act, Discrete):
+            n = self.act.n
+        elif isinstance(self.act, Box):
+           raise EnvironmentError("ah man we have to implement this shit")
+        else:
+            raise EnvironmentError("man your action space is fucked up")
+
+        self.Q = np.zeros(self.obs + (n,))
 
     def run_n_episodes(self, n, max_movements_in_episode):
         """
@@ -115,16 +129,22 @@ class Tabular(QLearner):
             s = self.state_from_obs(self.env.reset())
             lr = self.get_learning_rate(episode)
             movements = 0
+            print("###### episode {} ######".format(episode))
 
             for m in range(max_movements_in_episode):
-                self.env.render()
+                print("# " + str(m))
+                #self.env.render()
 
                 # an Action a
                 a = self.select_action(s, episode)
+                print(a)
 
                 observation, reward, done, _ = self.env.step(a)
+                print(observation, a, reward, done)
+                print()
 
                 s1 = self.state_from_obs(observation)
+                print(s1)
 
                 # Update the Q based on the result
                 best = np.amax(self.Q[s1])
@@ -135,9 +155,12 @@ class Tabular(QLearner):
                 if done:
                     movements = m
                     break
+
             if movements is 0:
                 movements = max_movements_in_episode
+
             print("Episode: {}\n \t finished after {} movements".format(episode+1, movements+1))
+
         return self.Q
 
 
