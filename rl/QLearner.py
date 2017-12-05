@@ -37,10 +37,12 @@ class QLearner(object):
         self.lr = learning_rate
         self.gamma = maximum_discount
         self.er = exploration_rate
+        self.start_time = time.time()
+        self.exploring = True
         pass
 
     @classmethod
-    def run_n_episodes(self, n, max_movements_in_episode):
+    def run_n_episodes(self, n, max_movements_in_episode, offline=False):
         pass
 
     def state_from_obs(self, obs):
@@ -64,20 +66,32 @@ class QLearner(object):
         # print("observation: {} yields state: {}".format(obs, tuple(indice)))
         return tuple(indice)
 
-    def select_action(self, state, episode):
+    def select_action(self, state, episode, offline):
         """
         selects an action depending on the episode
         we assume that new information is learned after every information
         :param state: current step
         :param episode: current episode
+        :param offline:
         :return: an action on the environment
         """
-        if r.random() < self.get_explore_rate(episode):
-            print("random sample")
-            return self.env.action_space.sample()
+        if offline:
+            # TODO
+            if time.time() - self.start_time > 10:
+                self.exploring = False
+                print("took argmax")
+                return self.act.get(np.argmax(self.Q[state]))
+            else:
+                print("random sample")
+                return self.act.sample()
+
         else:
-            print("took argmax")
-            return np.argmax(self.Q[state])
+            if r.random() < self.get_explore_rate(episode):
+                print("random sample")
+                return self.act.sample()
+            else:
+                print("took argmax")
+                return self.act.get(np.argmax(self.Q[state]))
 
     def get_explore_rate(self, episode):
         """
@@ -116,8 +130,9 @@ class Tabular(QLearner):
             raise EnvironmentError("man your action space is fucked up")
 
         self.Q = np.zeros(self.obs + (n,))
+        print("shape of Q is {}".format(self.Q.shape))
 
-    def run_n_episodes(self, n, max_movements_in_episode):
+    def run_n_episodes(self, n, max_movements_in_episode, offline=False):
         """
         Runs a simulation n times to update the Q-table
         :param n: number of episodes
@@ -136,7 +151,7 @@ class Tabular(QLearner):
                 #self.env.render()
 
                 # an Action a
-                a = self.select_action(s, episode)
+                a = self.select_action(s, episode, offline)
                 print(a)
 
                 observation, reward, done, _ = self.env.step(a)
@@ -153,7 +168,12 @@ class Tabular(QLearner):
                 s = s1
 
                 if done:
+                    if self.exploring is False:
+                        self.start_time = time.time()
+                        self.exploring = True
                     movements = m
+                    if episode % 10 is 0:
+                        np.save("qTable.npy", self.Q)
                     break
 
             if movements is 0:
@@ -177,7 +197,7 @@ class Network(QLearner):
         q_network_weights = q_network.trainable_weights
 
 
-    def run_n_episodes(self, n, max_movements_in_episode):
+    def run_n_episodes(self, n, max_movements_in_episode, offline=False):
 
             for episode in range(n):
                 s = self.state_from_obs(self.env.reset())

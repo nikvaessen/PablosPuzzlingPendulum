@@ -38,6 +38,8 @@ class DiscreteAction(Discrete):
                 self.actions[idx] = (i, j)
                 idx += 1
 
+    def get(self, index):
+        return self.actions[index]
 
     def sample(self):
         return self.actions[super(DiscreteAction, self).sample()]
