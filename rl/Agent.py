@@ -27,7 +27,7 @@ class DQNAgent:
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        model.add(Dense(24, input_shape=self.state_size, activation='relu'))
+        model.add(Dense(24, input_dim=self.state_size, activation='relu'))
         model.add(Dense(24, activation='relu'))
         model.add(Dense(self.action_size, activation='softmax'))
         model.compile(loss='mse',
@@ -40,6 +40,7 @@ class DQNAgent:
     def act(self, state):
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
+        print("state" + str(state))
         act_values = self.model.predict(state)
         return np.argmax(act_values[0])  # returns action
 
@@ -48,6 +49,7 @@ class DQNAgent:
 
         for state, action, reward, next_state, done in minibatch:
             target = reward
+            print("next state: " + str(next_state))
             if not done:
               target = reward + self.gamma * \
                        np.amax(self.model.predict(next_state)[0])

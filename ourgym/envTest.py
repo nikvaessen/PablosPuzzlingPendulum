@@ -3,11 +3,11 @@ import os.path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../communication'))
 
 from communication.com import Communicator
-from time import sleep
+from time import sleep, time
 from ourgym import RobotArm
 import math
 import rl.QLearner as ql
-from rl.DQNAgent import DQNAgent
+from rl.Agent import DQNAgent
 
 
 port = "/dev/cu.usbserial-A6003X31" #on mac for jose, pablo and nik
@@ -56,13 +56,16 @@ def learn_dqn():
     for e in range(episodes):
         # reset state in the beginning of each game
         state = env.reset()
-        state = np.reshape(state, [1, state_size])
+        print(state)
+        #state = np.reshape(state, [1, state_size])
 
         # time_t represents each frame of the game
         # Our goal is to keep the pole upright as long as possible until score of 500
         # the more time_t the more score
         total_r = 0
         for _ in range(max_episode_length):
+            start_time = time()
+            desired_end_time = start_time + 0.025
             # turn this on if you want to render
             # env.render()
 
@@ -72,7 +75,7 @@ def learn_dqn():
             # Advance the game to the next frame based on the action.
             # Reward is 1 for every frame the pole survived
             next_state, reward, done, _ = env.step(action)
-            next_state = np.reshape(next_state, [1, state_size])
+            #next_state = np.reshape(next_state, [1, state_size])
 
             # Remember the previous state, action, reward, and done
             agent.remember(state, action, reward, next_state, done)
@@ -83,6 +86,13 @@ def learn_dqn():
             # done becomes True when the game ends
             # ex) The agent drops the pole
             total_r += reward
+            print(state, action, reward, next_state, done)
+            ct = time()
+            if ct < desired_end_time:
+                sleep(desired_end_time - ct)
+            else:
+                print("### warning took to long !!!!")
+
             if done:
                 # print the score and break out of the loop
                 print("episode: {}/{}, score: {}"
@@ -91,8 +101,6 @@ def learn_dqn():
 
         # train the agent with the experience of the episode
         agent.replay(32)
-
-
 
 
 def move_test():

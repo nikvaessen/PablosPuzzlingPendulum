@@ -81,8 +81,7 @@ class Communicator:
             baudrate=baudrate,  # this needs to be set on micro-controller by doing Serial.begin(9600)
             parity=serial.PARITY_NONE,  # check parity of UC32, maybe it's even/odd
             stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=1)  # set time-out higher if we want to wait for input
+            bytesize=serial.EIGHTBITS)  # set time-out higher if we want to wait for input
         #for _ in range(0, 100):
         self.observe_state(supress_output=True)
         self.ser.reset_input_buffer()
@@ -91,18 +90,31 @@ class Communicator:
         print("Serial connection established over port " + self.ser.port)
 
     def observe_state(self, supress_output=False):
-        time.sleep(0.01)
+        if supress_output:
+            time.sleep(1)
+            self.ser.flushInput()
+            return
+
         self.ser.write(Communicator.request_data_token)
+        self.ser.flush()
+        # while self.ser.inWaiting():
+        #     if self.ser.in_waiting >= 6:
+        #         break
+        #     print("in_waiting: " + str(self.ser.in_waiting))
+        #     time.sleep(0.001)
 
         try:
-            if self.ser.in_waiting == 6:
-                b = list(self.ser.read(6))
-                #time.sleep(0.01)
-                result = [b[0] * 256 + b[1], b[2] * 256 + b[3], b[4] * 256 + b[5]]
-                #return [b[i * 2] * 256 + b[i * 2 + 1] for i in range(0, 3)]
-                return result
-            elif not supress_output:
-                print('Wrong number of bytes in buffer when reading.')
+            b = list(self.ser.read(6))
+            result = [b[0] * 256 + b[1], b[2] * 256 + b[3], b[4] * 256 + b[5]]
+            return result
+
+            #if self.ser.in_waiting == 6:
+            #time.sleep(0.01)
+            #return [b[i * 2] * 256 + b[i * 2 + 1] for i in range(0, 3)]
+            # elif not supress_output:
+            #     print('Wrong number of bytes in buffer when reading. ' +
+            #           str(self.ser.in_waiting))
+            #     self.ser.flushInput()
         except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
             if not supress_output:
                 print('FAILED TO READ DATA! Message: ', e)
