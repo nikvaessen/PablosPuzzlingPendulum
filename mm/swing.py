@@ -3,18 +3,19 @@ import os.path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../communication'))
 
 from communication.com import Communicator, Converter
-import numpy as np
 import time
+import numpy as np
 
 
 class SwingController:
     def __init__(self, com):
         self.com = com
-        self.change = 10
+        self.change = 15
         self.previous_pos = None
         self.previous_vel = None
         self.converter = Converter()
         self.previous = 0
+        self.first = -1
 
     def step(self):
         state = self.com.observe_state()
@@ -36,15 +37,19 @@ class SwingController:
         #sys.stdout.flush()
         print('Previous: {:d}, Current: {:d}, Velocity: {:d}'.format(self.previous_pos, pendulum_pos, current_vel))
         #print('Velocity: {:d}'.format(current_vel))
-        '''
+        direction_change = False
         if 1 < abs(current_vel) < 20 and np.sign(current_vel) != np.sign(self.previous_vel):
             self.previous_vel = current_vel
+            direction_change = True
             print('Change in direction')
-        '''
+
         self.previous_pos = pendulum_pos
 
+        if self.first == -1:
+            self.first = time.time()
+
         current = time.time()
-        if (current - self.previous) > 3.0:
+        if (current - self.previous) > 0.35:
             self.previous = current
             self.com.send_command(90 + self.change, 90 + self.change)
             self.change = -self.change

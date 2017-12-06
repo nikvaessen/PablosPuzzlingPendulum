@@ -65,8 +65,8 @@ def read_data_from_controller():
 
 class Communicator:
 
-    request_data_token = "READ\n".encode()
-    write_motor_token = "WRITE\n".encode()
+    request_data_token = bytes([0])
+    write_motor_token = bytes([1])
     failure_token = "FAILURE".encode()
 
     lower_joint_offset = -10
@@ -83,30 +83,26 @@ class Communicator:
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
             timeout=1)  # set time-out higher if we want to wait for input
+        self.observe_state(supress_output=True)
 
         print("Serial connection established over port " + self.ser.port)
 
-    def observe_state(self):
+    def observe_state(self, supress_output=False):
         self.ser.write(Communicator.request_data_token)
 
         try:
-            line = self.ser.readline()
-            numbers = line.strip().decode('ASCII').split(' ')
-            return [int(x) for x in numbers]
+            if self.ser.in_waiting == 6:
+                b = list(self.ser.read(6))
+                return [b[i * 2] * 256 + b[i * 2 + 1] for i in range(0, 3)]
+            elif not supress_output:
+                print('Wrong number of bytes in buffer when reading.')
         except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
-            print('FAILED TO READ DATA, INSTEAD GOT:')
-            try:
-                if line:
-                    print(line.strip().decode(), end='\n\n')
-            except Exception as e:
-                print(e)
-                pass
+            if not supress_output:
+                print('FAILED TO READ DATA! Message: ', e)
 
     def send_command(self, motor1, motor2):
         self.ser.write(Communicator.write_motor_token)
-        self.ser.write(str(motor1 + Communicator.lower_joint_offset).encode())
-        self.ser.write(" ".encode())
-        self.ser.write(str(motor2 + Communicator.upper_joint_offset).encode())
+        self.ser.write(bytes([motor1 + Communicator.lower_joint_offset, motor2 + Communicator.upper_joint_offset]))
 
 
 class Converter:

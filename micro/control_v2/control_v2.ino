@@ -5,12 +5,13 @@ const int POTENTIOMETER_PENDULUM    = A0;
 const int POTENTIOMETER_LOWER_JOINT = A1;
 const int POTENTIOMETER_UPPER_JOINT = A2;
 
-const String READ_POTENTIOMETERS_TOKEN = "READ";
-const String WRITE_MOTOR_COMMANDS_TOKEN = "WRITE";
+const int READ_POTENTIOMETERS_TOKEN = 0;
+const int WRITE_MOTOR_COMMANDS_TOKEN = 1;
 const String FAILURE_TOKEN = "FAILURE";
 const int NEWLINE_INT = 10;
 
-String req;
+byte readings[6];
+int pendulum_reading, lower_joint_reading, upper_joint_reading;
 
 Servo s1;
 Servo s2;
@@ -42,40 +43,26 @@ void setup() {
 }
 
 void loop() {
-    /*Serial.print(temp);
-    Serial.print(" (");
-    Serial.print(reading);
-    Serial.print(")");
-    Serial.print(" ");
-    Serial.println(in_critical_zone);*/
     if (Serial.available() > 0) {
-        String token = Serial.readStringUntil('\n');
+        int token = Serial.read();
 
-        if (READ_POTENTIOMETERS_TOKEN.equals(token)) {
-            Serial.print(adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM)));
-            //Serial.print(analogRead(POTENTIOMETER_PENDULUM));
-            Serial.print(" ");
-            Serial.print(analogRead(POTENTIOMETER_LOWER_JOINT));
-            Serial.print(" ");
-            Serial.println(analogRead(POTENTIOMETER_UPPER_JOINT));
-        } else if(WRITE_MOTOR_COMMANDS_TOKEN.equals(token)) {
-            int motor1 = Serial.parseInt();
-            int motor2 = Serial.parseInt();
-
-            if (motor1 >= 0 && motor1 <= 180 && motor2 >= 0 && motor2 <= 180) {
-                s1.write(motor1);
-                s2.write(motor2);
-                //Serial.printf("%d %d\n", motor1, motor2);
-            } else {
-                Serial.println(FAILURE_TOKEN);
+        if (READ_POTENTIOMETERS_TOKEN == token) {
+            pendulum_reading = adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM));
+            lower_joint_reading = analogRead(POTENTIOMETER_LOWER_JOINT);
+            upper_joint_reading = analogRead(POTENTIOMETER_UPPER_JOINT);
+            readings[0] = pendulum_reading / 256;
+            readings[1] = pendulum_reading % 256;
+            readings[2] = lower_joint_reading / 256;
+            readings[3] = lower_joint_reading % 256;
+            readings[4] = upper_joint_reading / 256;
+            readings[5] = upper_joint_reading % 256;
+            Serial.write(readings, 6);    
+        } else if(WRITE_MOTOR_COMMANDS_TOKEN == token) {
+            Serial.readBytes(readings, 2);
+            if (readings[0] >= 0 && readings[0] <= 180 && readings[1] >= 0 && readings[1] <= 180) {
+                s1.write(readings[0]);
+                s2.write(readings[1]);
             }
-        } else {
-            //send failure token because we don't know what we just read :(
-            Serial.print(FAILURE_TOKEN);
-            Serial.print(" ");
-            Serial.println("token received: ");
-            Serial.print(" ");
-            Serial.println(token);
         }
     } else {
         int temp = adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM));
