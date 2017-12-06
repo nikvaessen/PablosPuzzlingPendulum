@@ -7,6 +7,7 @@ from time import sleep
 from ourgym import RobotArm
 import math
 import rl.QLearner as ql
+from rl.DQNAgent import DQNAgent
 
 
 port = "/dev/cu.usbserial-A6003X31" #on mac for jose, pablo and nik
@@ -36,6 +37,63 @@ def learn():
 
     learner = ql.Tabular(env1, obs1, bounds1)
     learner.run_n_episodes(100, 1000)
+
+def learn_dqn():
+    import numpy as np
+    from ourgym import DiscreteAction
+
+    state_size = 3
+    action_size = 256
+    episodes = 500
+    max_episode_length = 1000
+
+    # initialize gym environment and the agent
+    env = RobotArm(port)
+    agent = DQNAgent(state_size, action_size)
+    action_map = DiscreteAction(256, 50, 130, 5)
+
+    # Iterate the environment
+    for e in range(episodes):
+        # reset state in the beginning of each game
+        state = env.reset()
+        state = np.reshape(state, [1, state_size])
+
+        # time_t represents each frame of the game
+        # Our goal is to keep the pole upright as long as possible until score of 500
+        # the more time_t the more score
+        total_r = 0
+        for _ in range(max_episode_length):
+            # turn this on if you want to render
+            # env.render()
+
+            # Decide action
+            action = action_map.get(agent.act(state))
+
+            # Advance the game to the next frame based on the action.
+            # Reward is 1 for every frame the pole survived
+            next_state, reward, done, _ = env.step(action)
+            next_state = np.reshape(next_state, [1, state_size])
+
+            # Remember the previous state, action, reward, and done
+            agent.remember(state, action, reward, next_state, done)
+
+            # make next_state the new current state for the next frame.
+            state = next_state
+
+            # done becomes True when the game ends
+            # ex) The agent drops the pole
+            total_r += reward
+            if done:
+                # print the score and break out of the loop
+                print("episode: {}/{}, score: {}"
+                      .format(e, episodes, total_r))
+                break
+
+        # train the agent with the experience of the episode
+        agent.replay(32)
+
+
+
 
 def move_test():
     port = "/dev/cu.usbserial-A6003X31"
@@ -117,4 +175,4 @@ def debug_reward():
 
 
 if __name__ == '__main__':
-    learn()
+    learn_dqn()
