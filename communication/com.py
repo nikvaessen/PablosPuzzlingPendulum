@@ -83,36 +83,25 @@ class Communicator:
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
             timeout=1)  # set time-out higher if we want to wait for input
+        #for _ in range(0, 100):
+        self.observe_state(supress_output=True)
+        self.ser.reset_input_buffer()
 
-        for i in range(0, 10):
-            self.observe_state(supress_output=True)
-            time.sleep(1)
-            self.ser.flush()
-
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-        self.ser.flush()
-
-        time.sleep(1)
+        time.sleep(5)
         print("Serial connection established over port " + self.ser.port)
 
     def observe_state(self, supress_output=False):
-        self.ser.write(Communicator.request_data_token)
         time.sleep(0.01)
+        self.ser.write(Communicator.request_data_token)
+
         try:
             if self.ser.in_waiting == 6:
                 b = list(self.ser.read(6))
-                return [b[i * 2] * 256 + b[i * 2 + 1] for i in range(0, 3)]
+                #time.sleep(0.01)
+                result = [b[0] * 256 + b[1], b[2] * 256 + b[3], b[4] * 256 + b[5]]
+                #return [b[i * 2] * 256 + b[i * 2 + 1] for i in range(0, 3)]
+                return result
             elif not supress_output:
-                print(self.ser.in_waiting)
                 print('Wrong number of bytes in buffer when reading.')
         except (KeyboardInterrupt, ValueError, UnicodeDecodeError) as e:
             if not supress_output:

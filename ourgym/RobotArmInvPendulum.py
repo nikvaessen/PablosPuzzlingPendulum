@@ -78,7 +78,7 @@ class RobotArm(gym.Env):
     # take during one episode of a the task
 
     observation_space = Box(np.array([0, 400, 400]), np.array([1020, 600, 600]))
-    center = np.array([600, 530, 510])
+    center = np.array([600, 530, 530])
     # lower motor max/left=600     min/right=400
     # upper motor max/left=600     min/right=400
     # center = [600, 530, 510]
@@ -223,12 +223,12 @@ class RobotArm(gym.Env):
 
     def _reward(self, state):
         j2 = state[2]
-        if j2 > 510:
-            j2 = 510 - abs(510 - j2)
+        if j2 > self.center[2]:
+            j2 = self.center[2] - abs(self.center[2] - j2)
         else:
-            j2 = 510 + abs(510 - j2)
+            j2 = self.center[2] + abs(self.center[2] - j2)
 
-        target = 600 - (state[1] - 520) + (j2 - 510)
+        target = self.center[0] - (state[1] - self.center[1]) + (j2 - self.center[2])
         current = state[0]
         dist = self.joses_madness(target, current)
         max_dist = 512
@@ -245,6 +245,8 @@ class RobotArm(gym.Env):
     def _get_current_state(self):
         # State in shape of (j1.pos, j2.pos, p.pos)
         state = self.com.observe_state()
+        while not state or state[2] > 900:
+            state = self.com.observe_state()
         self.pendulum = state[0]
         self.joint1 = state[1]
         self.joint2 = state[2]

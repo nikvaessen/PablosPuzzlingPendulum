@@ -110,11 +110,11 @@ def move_test():
     n = 0
     while n < 100:
         n += 1
-        #change = -change
-        #obot.com.send_command(50, 50)
+        change = -change
+        #robot.com.send_command(90 + change, 90 + change)
         #sleep(5)
         print(robot.com.observe_state())
-        sleep(5)
+        sleep(0.2)
 
     robot.reset()
 
@@ -171,7 +171,7 @@ def debug_reward():
         state = robot._get_current_state()
         reward = robot._reward(state)
         print(state, reward)
-        sleep(2)
+        sleep(0.1)
 
 
 if __name__ == '__main__':

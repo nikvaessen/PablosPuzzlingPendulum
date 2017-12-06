@@ -174,7 +174,7 @@ class Tabular(QLearner):
                         observation, reward, done, _ = t
 
                         s1 = self.state_from_obs(observation)
-                        print(s1, reward)
+                        print(observation, s1, reward)
 
                         # Update the Q based on the result
                         best = np.amax(self.Q[s1])
