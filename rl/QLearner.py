@@ -15,6 +15,7 @@ import random as r
 import math
 import tensorflow as tf
 import time
+import os
 
 from gym import Env
 from gym.spaces import Discrete, Box
@@ -117,6 +118,10 @@ class Tabular(QLearner):
     A tabular implementation of Q-Learning
     """
 
+    q_table_file_name = "qTable.npy"
+    use_multi_step = True
+    step_size = 5
+
     def __init__(self, environment:Env, num_of_obs, state_bounds,
                  learning_rate=0.1, maximum_discount=0.99, exploration_rate=0.01):
         super(Tabular, self).__init__(environment, num_of_obs, state_bounds,
@@ -129,7 +134,13 @@ class Tabular(QLearner):
         else:
             raise EnvironmentError("man your action space is fucked up")
 
-        self.Q = np.zeros(self.obs + (n,))
+        if os.path.exists(self.q_table_file_name):
+            self.Q = np.load(self.q_table_file_name)
+            print("Loaded q table from memory")
+        else:
+            self.Q = np.zeros(self.obs + (n,))
+            print("reinitialized the q-table")
+
         print("shape of Q is {}".format(self.Q.shape))
 
     def run_n_episodes(self, n, max_movements_in_episode, offline=False):
@@ -147,33 +158,54 @@ class Tabular(QLearner):
             print("###### episode {} ######".format(episode))
 
             for m in range(max_movements_in_episode):
-                print("# " + str(m))
+                print("# " + str(m) )
                 #self.env.render()
 
                 # an Action a
                 a = self.select_action(s, episode, offline)
                 print(a)
 
-                observation, reward, done, _ = self.env.step(a)
-                print(observation, a, reward, done)
+                done = None
+
+                if self.use_multi_step:
+                    rlist = self.env.multi_step(a, self.step_size)
+
+                    for t in rlist:
+                        observation, reward, done, _ = t
+
+                        s1 = self.state_from_obs(observation)
+                        print(s1, reward)
+
+                        # Update the Q based on the result
+                        best = np.amax(self.Q[s1])
+                        self.Q[s + (a,)] += lr * (reward + self.gamma * best - self.Q[s + (a,)])
+
+                        s = s1
+
+                        if done:
+                            break
+                else:
+                    observation, reward, done, _ = self.env.step(a)
+                    print(observation, a, reward, done)
+                    print()
+
+                    s1 = self.state_from_obs(observation)
+                    #print(s1, reward)
+
+                    # Update the Q based on the result
+                    best = np.amax(self.Q[s1])
+                    self.Q[s + (a,)] += lr * (reward + self.gamma * best - self.Q[s + (a,)])
+
+                    s = s1
+
                 print()
-
-                s1 = self.state_from_obs(observation)
-                print(s1)
-
-                # Update the Q based on the result
-                best = np.amax(self.Q[s1])
-                self.Q[s + (a,)] += lr * (reward + self.gamma * best - self.Q[s + (a,)])
-
-                s = s1
-
                 if done:
                     if self.exploring is False:
                         self.start_time = time.time()
                         self.exploring = True
                     movements = m
                     if episode % 10 is 0:
-                        np.save("qTable.npy", self.Q)
+                        np.save(self.q_table_file_name, self.Q)
                     break
 
             if movements is 0:
