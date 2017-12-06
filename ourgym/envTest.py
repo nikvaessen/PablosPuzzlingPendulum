@@ -31,7 +31,6 @@ def learn():
     # create bounds for for each observation parameter
     bounds1 = list(zip(env1.observation_space.low, env1.observation_space.high))
 
-
     # check size of default bounds
     print("bounds" + str(bounds1))
 
@@ -106,6 +105,16 @@ def joses_madness(t, c):
             d = t + (1024 - c)
 
     return d
+
+def debug_reward():
+    robot = RobotArm(usb_port=port)
+
+    while True:
+        state = robot._get_current_state()
+        reward = robot._reward(state)
+        print(state, reward)
+        sleep(2)
+
 
 if __name__ == '__main__':
     learn()

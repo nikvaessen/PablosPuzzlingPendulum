@@ -102,7 +102,7 @@ class RobotArm(gym.Env):
         """
         return super._seed(seed)
 
-    def _step(self, action):
+    def _step(self, action, take_action=True):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state.
@@ -117,21 +117,52 @@ class RobotArm(gym.Env):
             info (dict): contains auxiliary diagnostic information (helpful for
                          debugging, and sometimes learning)
         """
-        self.com.send_command(action[0], action[1])
-        time.sleep(0.1)
+        if take_action:
+            self.com.send_command(action[0], action[1])
+
         state = self._get_current_state()
 
         reward = self._reward(state)
         done = False
 
         if self.swing_up:
-            if reward > 0.8:
+            if reward > 0.95:
                 self.swing_up = False
         else:
             if reward < 0.4:
                 done = True
 
         return state, reward, done, {}
+
+
+
+    def multi_step(self, action, steps):
+        return_list = [None] * steps
+
+        for i in range(0, steps):
+            take_action = False
+            start_time = time.time()
+            end_time = start_time + 0.02
+
+            if i == 0:
+                take_action = True
+
+            state, reward, done, info = self._step(action, take_action=take_action)
+            return_list[i] = (state, reward, done, info)
+
+            if done:
+                break
+            else:
+                ct = time.time()
+                print("step took " + str(ct-start_time))
+                sleep_for = end_time - ct
+                if sleep_for > 0:
+                    time.sleep(sleep_for)
+                else:
+                    print("### WARNING step took longer than 10 ms")
+
+        return return_list
+
 
 
     def _render(self, mode='human', close=False):
@@ -203,8 +234,11 @@ class RobotArm(gym.Env):
         max_dist = 512
 
         if dist > max_dist:
+            #return -1
             return 0
         else:
+            #r = 1 - (dist / max_dist)
+            #return -1 if r < 0.8 else r
             return 1 - (dist / max_dist)
 
 
