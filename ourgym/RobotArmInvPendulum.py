@@ -41,6 +41,15 @@ class DiscreteAction(Discrete):
     def get(self, index):
         return self.actions[index]
 
+    def getIndex(self, action):
+        idx = 0
+        for a in self.actions:
+            if action == a:
+                return idx
+            else:
+                idx += 1
+
+
     def sample(self):
         return self.actions[super(DiscreteAction, self).sample()]
 
@@ -55,7 +64,7 @@ class RobotArm(gym.Env):
     """
     # TODO rewrite to use with ourgym.spaces.Box
 
-    def __init__(self, usb_port, time_step=15):
+    def __init__(self, usb_port, time_step=10):
         # self.world = Box2D.b2World()
         # body = self.world.CreateBody(Box2D.b2BodyDef())
         # change to find right partition of space
@@ -120,17 +129,23 @@ class RobotArm(gym.Env):
         if take_action:
             self.com.send_command(action[0], action[1])
 
+        time.sleep(self.time_step) # wait x ms to observe what the effect of the action was on the state
+
         state = self._get_current_state()
 
         reward = self._reward(state)
         done = False
 
         if self.swing_up:
-            if reward > 0.95:
+            if reward > 0.80:
                 self.swing_up = False
         else:
             if reward < 0.4:
                 done = True
+
+        if reward < 0.8:
+            reward = 0
+
 
         return state, reward, done, {}
 

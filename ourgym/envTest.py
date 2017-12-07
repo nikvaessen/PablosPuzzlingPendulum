@@ -45,37 +45,39 @@ def learn_dqn():
     state_size = 3
     action_size = 256
     episodes = 500
-    max_episode_length = 1000
+    max_episode_length = 1000  # 1000 / (1 / 0.025) = 25 secs
+    iteration_length = 0.030
+    safe_every = 5
+
+    weight_file = "" # set manually each time
 
     # initialize gym environment and the agent
-    env = RobotArm(port)
-    agent = DQNAgent(state_size, action_size)
+    env = RobotArm(port, time_step=0.0015)
     action_map = DiscreteAction(256, 50, 130, 5)
+    agent = DQNAgent(state_size, action_size, action_map)
+
+    if weight_file is not "":
+        agent.load(weight_file)
+        print("loaded " + str(weight_file))
 
     # Iterate the environment
-    for e in range(episodes):
-        # reset state in the beginning of each game
+    for e in range(1, episodes + 1):
+        # reset state in the beginning of each episode
         state = env.reset()
-        print(state)
-        #state = np.reshape(state, [1, state_size])
 
-        # time_t represents each frame of the game
-        # Our goal is to keep the pole upright as long as possible until score of 500
-        # the more time_t the more score
+        # time_r represents the sum of the reward over the episode
         total_r = 0
-        for _ in range(max_episode_length):
+        for moves in range(max_episode_length):
+            # decide when this iteration should be over
             start_time = time()
-            desired_end_time = start_time + 0.025
-            # turn this on if you want to render
-            # env.render()
+            desired_end_time = start_time + iteration_length
 
             # Decide action
-            action = action_map.get(agent.act(state))
+            action = agent.act(state)
 
-            # Advance the game to the next frame based on the action.
-            # Reward is 1 for every frame the pole survived
+            # Advance the environment to the next frame based on the action.
+            # Reward is bases on the angle of the pendulum
             next_state, reward, done, _ = env.step(action)
-            #next_state = np.reshape(next_state, [1, state_size])
 
             # Remember the previous state, action, reward, and done
             agent.remember(state, action, reward, next_state, done)
@@ -83,24 +85,28 @@ def learn_dqn():
             # make next_state the new current state for the next frame.
             state = next_state
 
-            # done becomes True when the game ends
-            # ex) The agent drops the pole
+            # sleep for the remaining time left, or warn when time-limit was exceeded
             total_r += reward
-            print(state, action, reward, next_state, done)
+            #print("move {}: {}, {}, {}, {}, {}".format(moves + 1, state, action, reward, next_state, done))
             ct = time()
             if ct < desired_end_time:
                 sleep(desired_end_time - ct)
             else:
-                print("### warning took to long !!!!")
+                print("### warning took to long !!!! off by: {}".format(ct - desired_end_time))
 
-            if done:
+            # done becomes True when the pendulum was swung up but fell down
+            if done or moves+1 == max_episode_length:
                 # print the score and break out of the loop
-                print("episode: {}/{}, score: {}"
-                      .format(e, episodes, total_r))
+                print("episode: {}/{}, score: {}, moves: {}"
+                      .format(e, episodes, total_r, moves + 1))
                 break
 
         # train the agent with the experience of the episode
-        agent.replay(32)
+        if len(agent.memory) > 1000:
+            agent.replay(1000)
+
+        if e % safe_every == 0:
+            agent.safe()
 
 
 def move_test():
