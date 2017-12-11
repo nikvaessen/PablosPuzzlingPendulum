@@ -13,16 +13,18 @@ from scipy.signal import square
 from matplotlib.widgets import Slider, Button
 
 # derivative function
-def dy(y, M_p, R, b, g, u):
-    return [y[1], -cos(y[0]) / R * u - b / (M_p * R * R) * y[1] - g / R * sin(y[0]), y[3], u]
+def full_dy(y, m_p, l_p, l_1, l_2, g, b, u):
+	x_accel_term = l_1 * (u[0] * cos(y[2]) - y[3] ** 2 * sin(y[2])) + l_2 * ((u[0] + u[1]) * cos(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * sin(y[2] + y[4] - pi))
+	y_accel_term = l_1 * (-u[0] * sin(y[2]) - y[3] ** 2 * cos(y[2])) - l_2 * ((u[0] + u[1]) * sin(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * cos(y[2] + y[4] - pi))
+	return [y[1], -cos(y[0]) / l_p * x_accel_term - sin(y[0]) / l_p * y_accel_term - b / (m_p * l_p * l_p) * y[1] - g / l_p * sin(y[0]), y[3], u[0], y[5], u[1]]
 
-# parameters
-m_p = 0.01
-b = 0.001
-R = 0.3
-L_1 = 0.5
-L_2 = 0.5
-g = 9.81
+# parameters (estimated from physical setup)
+m_p = 0.01		# pendulum mass
+l_p = 0.09		# pendulum length
+l_1 = 0.12		# lower segment length
+l_2 = 0.03		# upper segment length
+g = 9.81		# gravity
+b = 0.0001		# damping on pendulum axis
 
 # time step
 dt = 1.0 / 100.0
@@ -30,49 +32,44 @@ dt = 1.0 / 100.0
 # set up figure and animation
 fig = plt.figure()
 fig.canvas.set_window_title('Inverted Pendulum Simulation')
-ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-0.5, 0.5), ylim=(-0.5, 0.5))
+ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-0.25, 0.25), ylim=(-0.1, 0.35))
 plt.subplots_adjust(bottom=0.25)
 ax.grid()
-
-ax_input = plt.axes([0.25, 0.1, 0.5, 0.03])
-u_in = Slider(ax_input, 'Input', -5.0, 5.0, valinit=0.0)
-
-# pausing animation on click
-paused = False
-def onclick(event):
-    global paused
-    if paused:
-        paused = False
-    else:
-        paused = True
-cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
 # setting up drawables
 pendulum_line, = ax.plot([], [], 'o-')
 pendulum_line.set_linewidth(4.0)
 pendulum_line.set_color('#01c155')
-pendulum_bob = plt.Circle((0, 0), 0.03, color='b')
+pendulum_bob = plt.Circle((0, 0), 0.01, color='b')
 ax.add_artist(pendulum_bob)
 
-# initialising state
-state = [3/4 * pi, 0, 0, 0]
+# initialising state and time-keeping
+state = [pi, 0, pi, 0, pi, speed]
 t = 0
+previous = 0
 
-previous = time.time()
-
+# animation update function
 def animate(i):
-    global paused, m_p, R, b, g, state, t, previous
-    if not paused:
-        interval = time.time() - previous
-        state = integrate.odeint(lambda y, t: dy(y, m_p, R, b, g, u_in.val), state, [0, interval])[1]
-        previous = time.time()
+	global m_p, l_p, l_1, l_2, g, b, state, t, previous
 
-        pendulum_line.set_data([0, R * sin(state[0])], [0, -R * cos(state[0])])
-        pendulum_bob.center = (pendulum_line.get_data()[0][1], pendulum_line.get_data()[1][1])
+	diff = time.time() - previous
+	# computing next state
+	state = integrate.odeint(lambda y, t: full_dy(y, m_p, l_p, l_1, l_2, g, b, [0, 0]), state, [0, diff])[1]
+	previous = time.time()
 
-        t = t + interval
+	# computing positions for rendering
+	lower_joint_end = [l_1 * sin(state[2]), -l_1 * cos(state[2])]
+	upper_joint_end = [lower_joint_end[0] + l_2 * sin(state[4] + state[2] - pi), lower_joint_end[1] - l_2 * cos(state[4] + state[2] - pi)]
+	pendulum_end = [upper_joint_end[0] + l_p * sin(state[0]), upper_joint_end[1] - l_p * cos(state[0])]
 
-    return pendulum_line, pendulum_bob
+	# updating graphics
+	lower_joint.set_data([0, lower_joint_end[0]], [0, lower_joint_end[1]])
+	upper_joint.set_data([lower_joint_end[0], upper_joint_end[0]], [lower_joint_end[1], upper_joint_end[1]])
+	pendulum_line.set_data([upper_joint_end[0], pendulum_end[0]], [upper_joint_end[1], pendulum_end[1]])
+	pendulum_bob.center = (pendulum_line.get_data()[0][1], pendulum_line.get_data()[1][1])
+
+	t = t + diff
+	return lower_joint, upper_joint, pendulum_line, pendulum_bob
 
 # run animation
 t0 = time.time()

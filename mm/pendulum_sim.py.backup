@@ -1,0 +1,148 @@
+# imports
+import numpy as np
+import numpy.linalg as la
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import scipy.integrate as integrate
+import time
+import math
+
+# "from" imports
+from numpy import sin, cos, pi
+from scipy.signal import square
+from matplotlib.widgets import Slider, Button
+
+# derivative function
+def dy(y, M_p, R, b, g, u):
+	return [y[1], -cos(y[0]) / R * u - b / (M_p * R * R) * y[1] - g / R * sin(y[0]), y[3], u]
+
+def full_dy(y, M_p, R, b, g, L_1, L_2, u):
+	''' old acceleration terms determined based on a global theta_2
+	x_accel_term = -cos(y[0]) / R * (L_1 * (u[0] * cos(y[2]) - (y[3] ** 2) * sin(y[2])) + L_2 * (u[1] * cos(y[4]) - (y[5] ** 2) * sin(y[4])))
+	y_accel_term = -sin(y[0]) / R * (-L_1 * (u[0] * sin(y[2]) + (y[3] ** 2) * cos(y[2])) - L_2 * (u[1] * sin(y[4]) + (y[5] ** 2) * cos(y[4])))
+	'''
+	x_accel_term = L_1 * (u[0] * cos(y[2]) - y[3] ** 2 * sin(y[2])) + L_2 * ((u[0] + u[1]) * cos(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * sin(y[2] + y[4] - pi))
+	y_accel_term = L_1 * (-u[0] * sin(y[2]) - y[3] ** 2 * cos(y[2])) - L_2 * ((u[0] + u[1]) * sin(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * cos(y[2] + y[4] - pi))
+	#print("a_x =", x_accel_term, "a_y =", y_accel_term)
+	return [y[1], -cos(y[0]) / R * x_accel_term - sin(y[0]) / R * y_accel_term - b / (M_p * R * R) * y[1] - g / R * sin(y[0]), y[3], u[0], y[5], u[1]]
+
+def half_dy(y, M_p, R, b, g, L_1, u):
+	x_accel_term = L_1 * (u * cos(y[2]) - y[3] ** 2 * sin(y[2]))
+	y_accel_term = L_1 * (u * sin(y[2]) + y[3] ** 2 * cos(y[2]))
+	#print("a_x =", x_accel_term, "a_y =", y_accel_term)
+	return [y[1], -cos(y[0]) / R * x_accel_term - sin(y[0]) / R * y_accel_term - b / (M_p * R * R) * y[1] - g / R * sin(y[0]), y[3], u]
+
+# parameters
+m_p = 0.01
+b = 0.0001
+R = 0.09
+L_1 = 0.12
+L_2 = 0.03
+g = 9.81
+
+# time step
+dt = 1.0 / 500.0
+
+# set up figure and animation
+fig = plt.figure()
+fig.canvas.set_window_title('Inverted Pendulum Simulation')
+ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-0.25, 0.25), ylim=(-0.1, 0.35))
+plt.subplots_adjust(bottom=0.25)
+ax.grid()
+
+#ax_input = plt.axes([0.25, 0.1, 0.5, 0.03])
+#u_in = Slider(ax_input, 'Input', -5.0, 5.0, valinit=0.0)
+
+# setting up drawables
+pendulum_line, = ax.plot([], [], 'o-')
+pendulum_line.set_linewidth(4.0)
+pendulum_line.set_color('#01c155')
+pendulum_bob = plt.Circle((0, 0), 0.01, color='b')
+ax.add_artist(pendulum_bob)
+
+# initialising state
+#state = [3/4 * pi, 0, 0, 0]
+speed = 4 * pi
+state = [pi, 0, pi, 0, pi, speed]
+#state = [0, 0, pi / 2, 2*pi]
+t = 0
+
+previous = time.time()
+
+def animate(i):
+	global paused, m_p, R, b, g, state, t, previous
+
+	interval = time.time() - previous
+	state = integrate.odeint(lambda y, t: dy(y, m_p, R, b, g, u_in.val), state, [0, interval])[1]
+	previous = time.time()
+
+	pendulum_line.set_data([0, R * sin(state[0])], [0, -R * cos(state[0])])
+	pendulum_bob.center = (pendulum_line.get_data()[0][1], pendulum_line.get_data()[1][1])
+
+	t = t + interval
+
+	return pendulum_line, pendulum_bob
+
+lower_joint, = ax.plot([], [], 'o-', lw=4.0, color='#01c155')
+upper_joint, = ax.plot([], [], 'o-', lw=4.0, color='#01c155')
+
+def full_animate(i):
+	global paused, m_p, R, b, g, state, t, previous, L_1, L_2, speed
+
+	interval = time.time() - previous
+	state = integrate.odeint(lambda y, t: full_dy(y, m_p, R, b, g, L_1, L_2, [0, 0]), state, [0, interval])[1]
+	previous = time.time()
+
+	if speed > 0 and state[4] >= 9/8 * pi:
+		speed = -speed
+	elif speed < 0 and state[4] <= 7/8 * pi:
+		speed = -speed
+
+	#state[3] = 2 * pi * sin(5 * (t + pi))
+	state[5] = speed
+
+	lower_joint_end = [L_1 * sin(state[2]), -L_1 * cos(state[2])]
+	upper_joint_end = [lower_joint_end[0] + L_2 * sin(state[4] + state[2] - pi), lower_joint_end[1] - L_2 * cos(state[4] + state[2] - pi)]
+	pendulum_end = [upper_joint_end[0] + R * sin(state[0]), upper_joint_end[1] - R * cos(state[0])]
+
+	lower_joint.set_data([0, lower_joint_end[0]], [0, lower_joint_end[1]])
+	upper_joint.set_data([lower_joint_end[0], upper_joint_end[0]], [lower_joint_end[1], upper_joint_end[1]])
+	pendulum_line.set_data([upper_joint_end[0], pendulum_end[0]], [upper_joint_end[1], pendulum_end[1]])
+
+	#pendulum_line.set_data([0, R * sin(state[0])], [0, -R * cos(state[0])])
+	pendulum_bob.center = (pendulum_line.get_data()[0][1], pendulum_line.get_data()[1][1])
+
+	t = t + interval
+
+	return lower_joint, upper_joint, pendulum_line, pendulum_bob
+
+def half_animate(i):
+	global paused, m_p, R, b, g, state, t, previous, L_1
+
+	interval = time.time() - previous
+	state = integrate.odeint(lambda y, t: half_dy(y, m_p, R, b, g, L_1, 0), state, [0, interval])[1]
+	previous = time.time()
+
+	lower_joint_end = [L_1 * sin(state[2]), -L_1 * cos(state[2])]
+	pendulum_end = [lower_joint_end[0] + R * sin(state[0]), lower_joint_end[1] - R * cos(state[0])]
+
+	lower_joint.set_data([0, lower_joint_end[0]], [0, lower_joint_end[1]])
+	pendulum_line.set_data([lower_joint_end[0], pendulum_end[0]], [lower_joint_end[1], pendulum_end[1]])
+
+	#pendulum_line.set_data([0, R * sin(state[0])], [0, -R * cos(state[0])])
+	pendulum_bob.center = (pendulum_line.get_data()[0][1], pendulum_line.get_data()[1][1])
+
+	t = t + interval
+
+	return lower_joint, upper_joint, pendulum_line, pendulum_bob
+
+# run animation
+t0 = time.time()
+full_animate(0)
+t1 = time.time()
+interval = 1000 * dt - (t1 - t0)
+
+previous = time.time()
+ani = animation.FuncAnimation(fig, full_animate, frames=300, interval=interval, blit=True)
+plt.show()
+time.sleep(1)
