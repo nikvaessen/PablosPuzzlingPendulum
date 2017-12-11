@@ -16,6 +16,7 @@ if sys.platform == 'linux' or sys.platform == 'linux2':
 elif sys.platform == 'win32':
     port = 'COM4'
 
+
 def learn():
     env1 = RobotArm(usb_port=port)
     json = env1.observation_space.to_jsonable(env1.action_space.sample())
@@ -43,17 +44,19 @@ def learn_dqn():
     from ourgym import DiscreteAction
 
     state_size = 3
-    action_size = 256
+    action_size = 49
     episodes = 500
     max_episode_length = 1000  # 1000 / (1 / 0.025) = 25 secs
     iteration_length = 0.030
     safe_every = 5
 
+    past_action = 90, 90
+
     weight_file = "" # set manually each time
 
     # initialize gym environment and the agent
     env = RobotArm(port, time_step=0.0015)
-    action_map = DiscreteAction(6, -15, 15, 5)
+    action_map = DiscreteAction(49, -15, 16, 5)
     agent = DQNAgent(state_size, action_size, action_map)
 
     if weight_file is not "":
@@ -77,7 +80,7 @@ def learn_dqn():
 
             # Advance the environment to the next frame based on the action.
             # Reward is bases on the angle of the pendulum
-            real_action = add_action_to_position(action, state)
+            real_action = add_action_to_position(action, past_action)
             next_state, reward, done, _ = env.step(real_action)
 
             # Remember the previous state, action, reward, and done
@@ -90,6 +93,8 @@ def learn_dqn():
             total_r += reward
             #print("move {}: {}, {}, {}, {}, {}".format(moves + 1, state, action, reward, next_state, done))
             ct = time()
+            past_action = real_action
+
             if ct < desired_end_time:
                 sleep(desired_end_time - ct)
             else:
@@ -179,21 +184,21 @@ def joses_madness(t, c):
 
     return d
 
-def add_action_to_position(action, state):
+def add_action_to_position(action, past_action):
 
-    if state[1] + action[0] <= 50:
+    if past_action[0] + action[0] <= 50:
         a1 = 50
-    elif state[1] + action[0] >= 130:
+    elif past_action[0] + action[0] >= 130:
         a1 = 130
     else:
-        a1 = state[1] + action[0]
+        a1 = past_action[0] + action[0]
 
-    if state[2] + action[1] <= 50:
+    if past_action[1] + action[1] <= 50:
         a2 = 50
-    elif state[2] + action[1] >= 130:
+    elif past_action[1] + action[1] >= 130:
         a2 = 130
     else:
-        a2 = state[2] + action[1]
+        a2 = past_action[1] + action[1]
 
     return a1, a2
 

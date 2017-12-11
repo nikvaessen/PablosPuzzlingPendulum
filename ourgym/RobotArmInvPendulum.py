@@ -35,6 +35,7 @@ class DiscreteAction(Discrete):
         idx = 0
         for i in range(lower, upper, stepsize):
             for j in range(lower, upper, stepsize):
+                # print("init ({}, {}), with index {}".format(i, j, idx))
                 self.actions[idx] = (i, j)
                 idx += 1
 
@@ -81,7 +82,7 @@ class RobotArm(gym.Env):
 
     # The action space defines all possible actions which can be taken during
     # one episode of the task
-    action_space = DiscreteAction(256, 50, 130, 5)
+    action_space = DiscreteAction(49, -15, 16, 5)
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task
