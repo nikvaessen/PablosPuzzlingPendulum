@@ -50,13 +50,14 @@ def learn_dqn():
     iteration_length = 0.030
     safe_every = 5
 
-    past_action = 90, 90
+    past_action = [90, 90]
 
     weight_file = "" # set manually each time
 
     # initialize gym environment and the agent
     env = RobotArm(port, time_step=0.0015)
-    action_map = DiscreteAction(49, -15, 16, 5)
+    print("created robot")
+    action_map = DiscreteAction(49, -30, 31, 15)
     agent = DQNAgent(state_size, action_size, action_map)
 
     if weight_file is not "":
@@ -185,6 +186,9 @@ def joses_madness(t, c):
     return d
 
 def add_action_to_position(action, past_action):
+    # print("action: {}, past actions: {}".format(action, past_action))
+    if action is 0:
+        action = (0, 0)
 
     if past_action[0] + action[0] <= 50:
         a1 = 50
