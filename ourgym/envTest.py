@@ -46,7 +46,7 @@ def learn_dqn():
     state_size = 3
     action_size = 49
     episodes = 500
-    max_episode_length = 1000  # 1000 / (1 / 0.025) = 25 secs
+    max_episode_length = 100000  # 1000 / (1 / 0.025) = 25 secs
     iteration_length = 0.030
     safe_every = 5
 
@@ -109,8 +109,8 @@ def learn_dqn():
                 break
 
         # train the agent with the experience of the episode
-        if len(agent.memory) > 1000:
-            agent.replay(1000)
+        if len(agent.memory) > 50:
+            agent.replay(50)
 
         if e % safe_every == 0:
             agent.safe()
