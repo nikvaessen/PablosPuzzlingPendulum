@@ -53,7 +53,7 @@ def learn_dqn():
 
     # initialize gym environment and the agent
     env = RobotArm(port, time_step=0.0015)
-    action_map = DiscreteAction(256, 50, 130, 5)
+    action_map = DiscreteAction(6, -15, 15, 5)
     agent = DQNAgent(state_size, action_size, action_map)
 
     if weight_file is not "":
@@ -77,7 +77,8 @@ def learn_dqn():
 
             # Advance the environment to the next frame based on the action.
             # Reward is bases on the angle of the pendulum
-            next_state, reward, done, _ = env.step(action)
+            real_action = add_action_to_position(action, state)
+            next_state, reward, done, _ = env.step(real_action)
 
             # Remember the previous state, action, reward, and done
             agent.remember(state, action, reward, next_state, done)
@@ -177,6 +178,24 @@ def joses_madness(t, c):
             d = t + (1024 - c)
 
     return d
+
+def add_action_to_position(action, state):
+
+    if state[1] + action[0] <= 50:
+        a1 = 50
+    elif state[1] + action[0] >= 130:
+        a1 = 130
+    else:
+        a1 = state[1] + action[0]
+
+    if state[2] + action[1] <= 50:
+        a2 = 50
+    elif state[2] + action[1] >= 130:
+        a2 = 130
+    else:
+        a2 = state[2] + action[1]
+
+    return a1, a2
 
 def debug_reward():
     robot = RobotArm(usb_port=port)

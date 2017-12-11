@@ -11,10 +11,11 @@ from keras.optimizers import Adam
 
 from ourgym import DiscreteAction
 
+
 # Deep Q-learning Agent
 class DQNAgent:
 
-    def __init__(self, state_size, action_size, action_map:DiscreteAction):
+    def __init__(self, state_size, action_size, action_map: DiscreteAction):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
