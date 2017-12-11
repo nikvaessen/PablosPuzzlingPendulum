@@ -17,7 +17,7 @@
         "name": "cppcomm",
         "sources": [
             "cppcomm.pyx",
-            "ccomm.cpp"
+            "comm.cpp"
         ]
     },
     "module_name": "cppcomm"
@@ -831,6 +831,29 @@ static const char *__pyx_f[] = {
 #define __Pyx_CLEAR(r)    do { PyObject* tmp = ((PyObject*)(r)); r = NULL; __Pyx_DECREF(tmp);} while(0)
 #define __Pyx_XCLEAR(r)   do { if((r) != NULL) {PyObject* tmp = ((PyObject*)(r)); r = NULL; __Pyx_DECREF(tmp);}} while(0)
 
+/* PyObjectGetAttrStr.proto */
+#if CYTHON_USE_TYPE_SLOTS
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject* attr_name) {
+    PyTypeObject* tp = Py_TYPE(obj);
+    if (likely(tp->tp_getattro))
+        return tp->tp_getattro(obj, attr_name);
+#if PY_MAJOR_VERSION < 3
+    if (likely(tp->tp_getattr))
+        return tp->tp_getattr(obj, PyString_AS_STRING(attr_name));
+#endif
+    return PyObject_GetAttr(obj, attr_name);
+}
+#else
+#define __Pyx_PyObject_GetAttrStr(o,n) PyObject_GetAttr(o,n)
+#endif
+
+/* PyObjectCall.proto */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg, PyObject *kw);
+#else
+#define __Pyx_PyObject_Call(func, arg, kw) PyObject_Call(func, arg, kw)
+#endif
+
 /* ListAppend.proto */
 #if CYTHON_USE_PYLIST_INTERNALS && CYTHON_ASSUME_SAFE_MACROS
 static CYTHON_INLINE int __Pyx_PyList_Append(PyObject* list, PyObject* x) {
@@ -859,22 +882,6 @@ static void __Pyx_RaiseDoubleKeywordsError(const char* func_name, PyObject* kw_n
 static int __Pyx_ParseOptionalKeywords(PyObject *kwds, PyObject **argnames[],\
     PyObject *kwds2, PyObject *values[], Py_ssize_t num_pos_args,\
     const char* function_name);
-
-/* PyObjectGetAttrStr.proto */
-#if CYTHON_USE_TYPE_SLOTS
-static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject* attr_name) {
-    PyTypeObject* tp = Py_TYPE(obj);
-    if (likely(tp->tp_getattro))
-        return tp->tp_getattro(obj, attr_name);
-#if PY_MAJOR_VERSION < 3
-    if (likely(tp->tp_getattr))
-        return tp->tp_getattr(obj, PyString_AS_STRING(attr_name));
-#endif
-    return PyObject_GetAttr(obj, attr_name);
-}
-#else
-#define __Pyx_PyObject_GetAttrStr(o,n) PyObject_GetAttr(o,n)
-#endif
 
 /* PyThreadStateGet.proto */
 #if CYTHON_FAST_THREAD_STATE
@@ -978,42 +985,147 @@ int __pyx_module_is_main_cppcomm = 0;
 static const char __pyx_k_i[] = "i";
 static const char __pyx_k_m1[] = "m1";
 static const char __pyx_k_m2[] = "m2";
+static const char __pyx_k_c_m1[] = "c_m1";
+static const char __pyx_k_c_m2[] = "c_m2";
+static const char __pyx_k_init[] = "init";
 static const char __pyx_k_main[] = "__main__";
+static const char __pyx_k_port[] = "port";
 static const char __pyx_k_test[] = "__test__";
-static const char __pyx_k_motor1[] = "motor1";
-static const char __pyx_k_motor2[] = "motor2";
+static const char __pyx_k_UTF_8[] = "UTF-8";
+static const char __pyx_k_c_port[] = "c_port";
+static const char __pyx_k_encode[] = "encode";
 static const char __pyx_k_result[] = "result";
 static const char __pyx_k_states[] = "states";
 static const char __pyx_k_cppcomm[] = "cppcomm";
 static const char __pyx_k_nr_states[] = "nr_states";
 static const char __pyx_k_cppcomm_pyx[] = "cppcomm.pyx";
+static const char __pyx_k_port_encoded[] = "port_encoded";
 static const char __pyx_k_observe_state[] = "observe_state";
 static const char __pyx_k_send_commands[] = "send_commands";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
+static PyObject *__pyx_kp_s_UTF_8;
+static PyObject *__pyx_n_s_c_m1;
+static PyObject *__pyx_n_s_c_m2;
+static PyObject *__pyx_n_s_c_port;
 static PyObject *__pyx_n_s_cline_in_traceback;
 static PyObject *__pyx_n_s_cppcomm;
 static PyObject *__pyx_kp_s_cppcomm_pyx;
+static PyObject *__pyx_n_s_encode;
 static PyObject *__pyx_n_s_i;
+static PyObject *__pyx_n_s_init;
 static PyObject *__pyx_n_s_m1;
 static PyObject *__pyx_n_s_m2;
 static PyObject *__pyx_n_s_main;
-static PyObject *__pyx_n_s_motor1;
-static PyObject *__pyx_n_s_motor2;
 static PyObject *__pyx_n_s_nr_states;
 static PyObject *__pyx_n_s_observe_state;
+static PyObject *__pyx_n_s_port;
+static PyObject *__pyx_n_s_port_encoded;
 static PyObject *__pyx_n_s_result;
 static PyObject *__pyx_n_s_send_commands;
 static PyObject *__pyx_n_s_states;
 static PyObject *__pyx_n_s_test;
-static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
-static PyObject *__pyx_pf_7cppcomm_2send_commands(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_m1, PyObject *__pyx_v_m2); /* proto */
+static PyObject *__pyx_pf_7cppcomm_init(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_port); /* proto */
+static PyObject *__pyx_pf_7cppcomm_2observe_state(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
+static PyObject *__pyx_pf_7cppcomm_4send_commands(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_m1, PyObject *__pyx_v_m2); /* proto */
 static PyObject *__pyx_tuple_;
-static PyObject *__pyx_tuple__3;
-static PyObject *__pyx_codeobj__2;
-static PyObject *__pyx_codeobj__4;
+static PyObject *__pyx_tuple__2;
+static PyObject *__pyx_tuple__4;
+static PyObject *__pyx_tuple__6;
+static PyObject *__pyx_codeobj__3;
+static PyObject *__pyx_codeobj__5;
+static PyObject *__pyx_codeobj__7;
 
-/* "cppcomm.pyx":5
+/* "cppcomm.pyx":6
  * 	void Send_commands(int motor1, int motor2)
+ * 
+ * def init(port):             # <<<<<<<<<<<<<<
+ * 	port_encoded = port.encode('UTF-8')
+ * 	cdef char* c_port = port_encoded
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7cppcomm_1init(PyObject *__pyx_self, PyObject *__pyx_v_port); /*proto*/
+static PyMethodDef __pyx_mdef_7cppcomm_1init = {"init", (PyCFunction)__pyx_pw_7cppcomm_1init, METH_O, 0};
+static PyObject *__pyx_pw_7cppcomm_1init(PyObject *__pyx_self, PyObject *__pyx_v_port) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("init (wrapper)", 0);
+  __pyx_r = __pyx_pf_7cppcomm_init(__pyx_self, ((PyObject *)__pyx_v_port));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7cppcomm_init(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_port) {
+  PyObject *__pyx_v_port_encoded = NULL;
+  char *__pyx_v_c_port;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  char *__pyx_t_3;
+  __Pyx_RefNannySetupContext("init", 0);
+
+  /* "cppcomm.pyx":7
+ * 
+ * def init(port):
+ * 	port_encoded = port.encode('UTF-8')             # <<<<<<<<<<<<<<
+ * 	cdef char* c_port = port_encoded
+ * 	Init(c_port)
+ */
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_port, __pyx_n_s_encode); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 7, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 7, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_port_encoded = __pyx_t_2;
+  __pyx_t_2 = 0;
+
+  /* "cppcomm.pyx":8
+ * def init(port):
+ * 	port_encoded = port.encode('UTF-8')
+ * 	cdef char* c_port = port_encoded             # <<<<<<<<<<<<<<
+ * 	Init(c_port)
+ * 
+ */
+  __pyx_t_3 = __Pyx_PyObject_AsWritableString(__pyx_v_port_encoded); if (unlikely((!__pyx_t_3) && PyErr_Occurred())) __PYX_ERR(0, 8, __pyx_L1_error)
+  __pyx_v_c_port = __pyx_t_3;
+
+  /* "cppcomm.pyx":9
+ * 	port_encoded = port.encode('UTF-8')
+ * 	cdef char* c_port = port_encoded
+ * 	Init(c_port)             # <<<<<<<<<<<<<<
+ * 
+ * def observe_state():
+ */
+  Init(__pyx_v_c_port);
+
+  /* "cppcomm.pyx":6
+ * 	void Send_commands(int motor1, int motor2)
+ * 
+ * def init(port):             # <<<<<<<<<<<<<<
+ * 	port_encoded = port.encode('UTF-8')
+ * 	cdef char* c_port = port_encoded
+ */
+
+  /* function exit code */
+  __pyx_r = Py_None; __Pyx_INCREF(Py_None);
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_AddTraceback("cppcomm.init", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_port_encoded);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "cppcomm.pyx":11
+ * 	Init(c_port)
  * 
  * def observe_state():             # <<<<<<<<<<<<<<
  * 	cdef int nr_states = 3
@@ -1021,20 +1133,20 @@ static PyObject *__pyx_codeobj__4;
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7cppcomm_1observe_state(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
-static PyMethodDef __pyx_mdef_7cppcomm_1observe_state = {"observe_state", (PyCFunction)__pyx_pw_7cppcomm_1observe_state, METH_NOARGS, 0};
-static PyObject *__pyx_pw_7cppcomm_1observe_state(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
+static PyObject *__pyx_pw_7cppcomm_3observe_state(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyMethodDef __pyx_mdef_7cppcomm_3observe_state = {"observe_state", (PyCFunction)__pyx_pw_7cppcomm_3observe_state, METH_NOARGS, 0};
+static PyObject *__pyx_pw_7cppcomm_3observe_state(PyObject *__pyx_self, CYTHON_UNUSED PyObject *unused) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("observe_state (wrapper)", 0);
-  __pyx_r = __pyx_pf_7cppcomm_observe_state(__pyx_self);
+  __pyx_r = __pyx_pf_7cppcomm_2observe_state(__pyx_self);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_self) {
+static PyObject *__pyx_pf_7cppcomm_2observe_state(CYTHON_UNUSED PyObject *__pyx_self) {
   int __pyx_v_nr_states;
   int __pyx_v_states[3];
   int __pyx_v_i;
@@ -1046,7 +1158,7 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
   int __pyx_t_3;
   __Pyx_RefNannySetupContext("observe_state", 0);
 
-  /* "cppcomm.pyx":6
+  /* "cppcomm.pyx":12
  * 
  * def observe_state():
  * 	cdef int nr_states = 3             # <<<<<<<<<<<<<<
@@ -1055,7 +1167,7 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
  */
   __pyx_v_nr_states = 3;
 
-  /* "cppcomm.pyx":9
+  /* "cppcomm.pyx":15
  * 	cdef int states[3]
  * 	cdef int i
  * 	Observe_state(&states[0], nr_states)             # <<<<<<<<<<<<<<
@@ -1064,19 +1176,19 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
  */
   Observe_state((&(__pyx_v_states[0])), __pyx_v_nr_states);
 
-  /* "cppcomm.pyx":10
+  /* "cppcomm.pyx":16
  * 	cdef int i
  * 	Observe_state(&states[0], nr_states)
  * 	result = []             # <<<<<<<<<<<<<<
  * 	i = 0
  * 	while i < nr_states:
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 10, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_result = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "cppcomm.pyx":11
+  /* "cppcomm.pyx":17
  * 	Observe_state(&states[0], nr_states)
  * 	result = []
  * 	i = 0             # <<<<<<<<<<<<<<
@@ -1085,7 +1197,7 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
  */
   __pyx_v_i = 0;
 
-  /* "cppcomm.pyx":12
+  /* "cppcomm.pyx":18
  * 	result = []
  * 	i = 0
  * 	while i < nr_states:             # <<<<<<<<<<<<<<
@@ -1096,19 +1208,19 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
     __pyx_t_2 = ((__pyx_v_i < __pyx_v_nr_states) != 0);
     if (!__pyx_t_2) break;
 
-    /* "cppcomm.pyx":13
+    /* "cppcomm.pyx":19
  * 	i = 0
  * 	while i < nr_states:
  * 		result.append(states[i])             # <<<<<<<<<<<<<<
  * 		i = i + 1
  * 	return result
  */
-    __pyx_t_1 = __Pyx_PyInt_From_int((__pyx_v_states[__pyx_v_i])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 13, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyInt_From_int((__pyx_v_states[__pyx_v_i])); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 19, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = __Pyx_PyList_Append(__pyx_v_result, __pyx_t_1); if (unlikely(__pyx_t_3 == ((int)-1))) __PYX_ERR(0, 13, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyList_Append(__pyx_v_result, __pyx_t_1); if (unlikely(__pyx_t_3 == ((int)-1))) __PYX_ERR(0, 19, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "cppcomm.pyx":14
+    /* "cppcomm.pyx":20
  * 	while i < nr_states:
  * 		result.append(states[i])
  * 		i = i + 1             # <<<<<<<<<<<<<<
@@ -1118,7 +1230,7 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
     __pyx_v_i = (__pyx_v_i + 1);
   }
 
-  /* "cppcomm.pyx":15
+  /* "cppcomm.pyx":21
  * 		result.append(states[i])
  * 		i = i + 1
  * 	return result             # <<<<<<<<<<<<<<
@@ -1130,8 +1242,8 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
   __pyx_r = __pyx_v_result;
   goto __pyx_L0;
 
-  /* "cppcomm.pyx":5
- * 	void Send_commands(int motor1, int motor2)
+  /* "cppcomm.pyx":11
+ * 	Init(c_port)
  * 
  * def observe_state():             # <<<<<<<<<<<<<<
  * 	cdef int nr_states = 3
@@ -1150,18 +1262,18 @@ static PyObject *__pyx_pf_7cppcomm_observe_state(CYTHON_UNUSED PyObject *__pyx_s
   return __pyx_r;
 }
 
-/* "cppcomm.pyx":17
+/* "cppcomm.pyx":23
  * 	return result
  * 
  * def send_commands(m1, m2):             # <<<<<<<<<<<<<<
- * 	cdef int motor1 = m1, motor2 = m2
- * 	Send_commands(motor1, motor2)
+ * 	cdef int c_m1 = m1, c_m2 = m2
+ * 	Send_commands(c_m1, c_m2)
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7cppcomm_3send_commands(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyMethodDef __pyx_mdef_7cppcomm_3send_commands = {"send_commands", (PyCFunction)__pyx_pw_7cppcomm_3send_commands, METH_VARARGS|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7cppcomm_3send_commands(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_7cppcomm_5send_commands(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyMethodDef __pyx_mdef_7cppcomm_5send_commands = {"send_commands", (PyCFunction)__pyx_pw_7cppcomm_5send_commands, METH_VARARGS|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_7cppcomm_5send_commands(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_m1 = 0;
   PyObject *__pyx_v_m2 = 0;
   PyObject *__pyx_r = 0;
@@ -1190,11 +1302,11 @@ static PyObject *__pyx_pw_7cppcomm_3send_commands(PyObject *__pyx_self, PyObject
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_m2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("send_commands", 1, 2, 2, 1); __PYX_ERR(0, 17, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("send_commands", 1, 2, 2, 1); __PYX_ERR(0, 23, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "send_commands") < 0)) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "send_commands") < 0)) __PYX_ERR(0, 23, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -1207,51 +1319,51 @@ static PyObject *__pyx_pw_7cppcomm_3send_commands(PyObject *__pyx_self, PyObject
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("send_commands", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 17, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("send_commands", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 23, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("cppcomm.send_commands", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_7cppcomm_2send_commands(__pyx_self, __pyx_v_m1, __pyx_v_m2);
+  __pyx_r = __pyx_pf_7cppcomm_4send_commands(__pyx_self, __pyx_v_m1, __pyx_v_m2);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_7cppcomm_2send_commands(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_m1, PyObject *__pyx_v_m2) {
-  int __pyx_v_motor1;
-  int __pyx_v_motor2;
+static PyObject *__pyx_pf_7cppcomm_4send_commands(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_m1, PyObject *__pyx_v_m2) {
+  int __pyx_v_c_m1;
+  int __pyx_v_c_m2;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("send_commands", 0);
 
-  /* "cppcomm.pyx":18
+  /* "cppcomm.pyx":24
  * 
  * def send_commands(m1, m2):
- * 	cdef int motor1 = m1, motor2 = m2             # <<<<<<<<<<<<<<
- * 	Send_commands(motor1, motor2)
+ * 	cdef int c_m1 = m1, c_m2 = m2             # <<<<<<<<<<<<<<
+ * 	Send_commands(c_m1, c_m2)
  */
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_m1); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L1_error)
-  __pyx_v_motor1 = __pyx_t_1;
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_m2); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 18, __pyx_L1_error)
-  __pyx_v_motor2 = __pyx_t_1;
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_m1); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_v_c_m1 = __pyx_t_1;
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_m2); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_v_c_m2 = __pyx_t_1;
 
-  /* "cppcomm.pyx":19
+  /* "cppcomm.pyx":25
  * def send_commands(m1, m2):
- * 	cdef int motor1 = m1, motor2 = m2
- * 	Send_commands(motor1, motor2)             # <<<<<<<<<<<<<<
+ * 	cdef int c_m1 = m1, c_m2 = m2
+ * 	Send_commands(c_m1, c_m2)             # <<<<<<<<<<<<<<
  */
-  Send_commands(__pyx_v_motor1, __pyx_v_motor2);
+  Send_commands(__pyx_v_c_m1, __pyx_v_c_m2);
 
-  /* "cppcomm.pyx":17
+  /* "cppcomm.pyx":23
  * 	return result
  * 
  * def send_commands(m1, m2):             # <<<<<<<<<<<<<<
- * 	cdef int motor1 = m1, motor2 = m2
- * 	Send_commands(motor1, motor2)
+ * 	cdef int c_m1 = m1, c_m2 = m2
+ * 	Send_commands(c_m1, c_m2)
  */
 
   /* function exit code */
@@ -1303,17 +1415,23 @@ static struct PyModuleDef __pyx_moduledef = {
 #endif
 
 static __Pyx_StringTabEntry __pyx_string_tab[] = {
+  {&__pyx_kp_s_UTF_8, __pyx_k_UTF_8, sizeof(__pyx_k_UTF_8), 0, 0, 1, 0},
+  {&__pyx_n_s_c_m1, __pyx_k_c_m1, sizeof(__pyx_k_c_m1), 0, 0, 1, 1},
+  {&__pyx_n_s_c_m2, __pyx_k_c_m2, sizeof(__pyx_k_c_m2), 0, 0, 1, 1},
+  {&__pyx_n_s_c_port, __pyx_k_c_port, sizeof(__pyx_k_c_port), 0, 0, 1, 1},
   {&__pyx_n_s_cline_in_traceback, __pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 0, 1, 1},
   {&__pyx_n_s_cppcomm, __pyx_k_cppcomm, sizeof(__pyx_k_cppcomm), 0, 0, 1, 1},
   {&__pyx_kp_s_cppcomm_pyx, __pyx_k_cppcomm_pyx, sizeof(__pyx_k_cppcomm_pyx), 0, 0, 1, 0},
+  {&__pyx_n_s_encode, __pyx_k_encode, sizeof(__pyx_k_encode), 0, 0, 1, 1},
   {&__pyx_n_s_i, __pyx_k_i, sizeof(__pyx_k_i), 0, 0, 1, 1},
+  {&__pyx_n_s_init, __pyx_k_init, sizeof(__pyx_k_init), 0, 0, 1, 1},
   {&__pyx_n_s_m1, __pyx_k_m1, sizeof(__pyx_k_m1), 0, 0, 1, 1},
   {&__pyx_n_s_m2, __pyx_k_m2, sizeof(__pyx_k_m2), 0, 0, 1, 1},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
-  {&__pyx_n_s_motor1, __pyx_k_motor1, sizeof(__pyx_k_motor1), 0, 0, 1, 1},
-  {&__pyx_n_s_motor2, __pyx_k_motor2, sizeof(__pyx_k_motor2), 0, 0, 1, 1},
   {&__pyx_n_s_nr_states, __pyx_k_nr_states, sizeof(__pyx_k_nr_states), 0, 0, 1, 1},
   {&__pyx_n_s_observe_state, __pyx_k_observe_state, sizeof(__pyx_k_observe_state), 0, 0, 1, 1},
+  {&__pyx_n_s_port, __pyx_k_port, sizeof(__pyx_k_port), 0, 0, 1, 1},
+  {&__pyx_n_s_port_encoded, __pyx_k_port_encoded, sizeof(__pyx_k_port_encoded), 0, 0, 1, 1},
   {&__pyx_n_s_result, __pyx_k_result, sizeof(__pyx_k_result), 0, 0, 1, 1},
   {&__pyx_n_s_send_commands, __pyx_k_send_commands, sizeof(__pyx_k_send_commands), 0, 0, 1, 1},
   {&__pyx_n_s_states, __pyx_k_states, sizeof(__pyx_k_states), 0, 0, 1, 1},
@@ -1328,29 +1446,52 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "cppcomm.pyx":5
+  /* "cppcomm.pyx":7
+ * 
+ * def init(port):
+ * 	port_encoded = port.encode('UTF-8')             # <<<<<<<<<<<<<<
+ * 	cdef char* c_port = port_encoded
+ * 	Init(c_port)
+ */
+  __pyx_tuple_ = PyTuple_Pack(1, __pyx_kp_s_UTF_8); if (unlikely(!__pyx_tuple_)) __PYX_ERR(0, 7, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple_);
+  __Pyx_GIVEREF(__pyx_tuple_);
+
+  /* "cppcomm.pyx":6
  * 	void Send_commands(int motor1, int motor2)
+ * 
+ * def init(port):             # <<<<<<<<<<<<<<
+ * 	port_encoded = port.encode('UTF-8')
+ * 	cdef char* c_port = port_encoded
+ */
+  __pyx_tuple__2 = PyTuple_Pack(3, __pyx_n_s_port, __pyx_n_s_port_encoded, __pyx_n_s_c_port); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__2);
+  __Pyx_GIVEREF(__pyx_tuple__2);
+  __pyx_codeobj__3 = (PyObject*)__Pyx_PyCode_New(1, 0, 3, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__2, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_cppcomm_pyx, __pyx_n_s_init, 6, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__3)) __PYX_ERR(0, 6, __pyx_L1_error)
+
+  /* "cppcomm.pyx":11
+ * 	Init(c_port)
  * 
  * def observe_state():             # <<<<<<<<<<<<<<
  * 	cdef int nr_states = 3
  * 	cdef int states[3]
  */
-  __pyx_tuple_ = PyTuple_Pack(4, __pyx_n_s_nr_states, __pyx_n_s_states, __pyx_n_s_i, __pyx_n_s_result); if (unlikely(!__pyx_tuple_)) __PYX_ERR(0, 5, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple_);
-  __Pyx_GIVEREF(__pyx_tuple_);
-  __pyx_codeobj__2 = (PyObject*)__Pyx_PyCode_New(0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple_, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_cppcomm_pyx, __pyx_n_s_observe_state, 5, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__2)) __PYX_ERR(0, 5, __pyx_L1_error)
+  __pyx_tuple__4 = PyTuple_Pack(4, __pyx_n_s_nr_states, __pyx_n_s_states, __pyx_n_s_i, __pyx_n_s_result); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 11, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__4);
+  __Pyx_GIVEREF(__pyx_tuple__4);
+  __pyx_codeobj__5 = (PyObject*)__Pyx_PyCode_New(0, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_cppcomm_pyx, __pyx_n_s_observe_state, 11, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__5)) __PYX_ERR(0, 11, __pyx_L1_error)
 
-  /* "cppcomm.pyx":17
+  /* "cppcomm.pyx":23
  * 	return result
  * 
  * def send_commands(m1, m2):             # <<<<<<<<<<<<<<
- * 	cdef int motor1 = m1, motor2 = m2
- * 	Send_commands(motor1, motor2)
+ * 	cdef int c_m1 = m1, c_m2 = m2
+ * 	Send_commands(c_m1, c_m2)
  */
-  __pyx_tuple__3 = PyTuple_Pack(4, __pyx_n_s_m1, __pyx_n_s_m2, __pyx_n_s_motor1, __pyx_n_s_motor2); if (unlikely(!__pyx_tuple__3)) __PYX_ERR(0, 17, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__3);
-  __Pyx_GIVEREF(__pyx_tuple__3);
-  __pyx_codeobj__4 = (PyObject*)__Pyx_PyCode_New(2, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__3, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_cppcomm_pyx, __pyx_n_s_send_commands, 17, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__4)) __PYX_ERR(0, 17, __pyx_L1_error)
+  __pyx_tuple__6 = PyTuple_Pack(4, __pyx_n_s_m1, __pyx_n_s_m2, __pyx_n_s_c_m1, __pyx_n_s_c_m2); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 23, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__6);
+  __Pyx_GIVEREF(__pyx_tuple__6);
+  __pyx_codeobj__7 = (PyObject*)__Pyx_PyCode_New(2, 0, 4, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__6, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_cppcomm_pyx, __pyx_n_s_send_commands, 23, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__7)) __PYX_ERR(0, 23, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -1510,34 +1651,46 @@ static int __pyx_pymod_exec_cppcomm(PyObject *__pyx_pyinit_module)
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "cppcomm.pyx":5
+  /* "cppcomm.pyx":6
  * 	void Send_commands(int motor1, int motor2)
+ * 
+ * def init(port):             # <<<<<<<<<<<<<<
+ * 	port_encoded = port.encode('UTF-8')
+ * 	cdef char* c_port = port_encoded
+ */
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_7cppcomm_1init, NULL, __pyx_n_s_cppcomm); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_init, __pyx_t_1) < 0) __PYX_ERR(0, 6, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "cppcomm.pyx":11
+ * 	Init(c_port)
  * 
  * def observe_state():             # <<<<<<<<<<<<<<
  * 	cdef int nr_states = 3
  * 	cdef int states[3]
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_7cppcomm_1observe_state, NULL, __pyx_n_s_cppcomm); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 5, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_7cppcomm_3observe_state, NULL, __pyx_n_s_cppcomm); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 11, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_observe_state, __pyx_t_1) < 0) __PYX_ERR(0, 5, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_observe_state, __pyx_t_1) < 0) __PYX_ERR(0, 11, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "cppcomm.pyx":17
+  /* "cppcomm.pyx":23
  * 	return result
  * 
  * def send_commands(m1, m2):             # <<<<<<<<<<<<<<
- * 	cdef int motor1 = m1, motor2 = m2
- * 	Send_commands(motor1, motor2)
+ * 	cdef int c_m1 = m1, c_m2 = m2
+ * 	Send_commands(c_m1, c_m2)
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_7cppcomm_3send_commands, NULL, __pyx_n_s_cppcomm); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 17, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_7cppcomm_5send_commands, NULL, __pyx_n_s_cppcomm); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_send_commands, __pyx_t_1) < 0) __PYX_ERR(0, 17, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_send_commands, __pyx_t_1) < 0) __PYX_ERR(0, 23, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "cppcomm.pyx":1
  * cdef extern from "comm.h":             # <<<<<<<<<<<<<<
+ * 	void Init(const char* port)
  * 	void Observe_state(int* states, int nr_states)
- * 	void Send_commands(int motor1, int motor2)
  */
   __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -1583,6 +1736,26 @@ end:
     Py_XDECREF(p);
     Py_XDECREF(m);
     return (__Pyx_RefNannyAPIStruct *)r;
+}
+#endif
+
+/* PyObjectCall */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg, PyObject *kw) {
+    PyObject *result;
+    ternaryfunc call = func->ob_type->tp_call;
+    if (unlikely(!call))
+        return PyObject_Call(func, arg, kw);
+    if (unlikely(Py_EnterRecursiveCall((char*)" while calling a Python object")))
+        return NULL;
+    result = (*call)(func, arg, kw);
+    Py_LeaveRecursiveCall();
+    if (unlikely(!result) && unlikely(!PyErr_Occurred())) {
+        PyErr_SetString(
+            PyExc_SystemError,
+            "NULL result without error in PyObject_Call");
+    }
+    return result;
 }
 #endif
 

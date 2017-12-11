@@ -1,6 +1,12 @@
 cdef extern from "comm.h":
+	void Init(const char* port)
 	void Observe_state(int* states, int nr_states)
 	void Send_commands(int motor1, int motor2)
+
+def init(port):
+	port_encoded = port.encode('UTF-8')
+	cdef char* c_port = port_encoded
+	Init(c_port)
 
 def observe_state():
 	cdef int nr_states = 3
@@ -15,5 +21,5 @@ def observe_state():
 	return result
 
 def send_commands(m1, m2):
-	cdef int motor1 = m1, motor2 = m2
-	Send_commands(motor1, motor2)
+	cdef int c_m1 = m1, c_m2 = m2
+	Send_commands(c_m1, c_m2)
