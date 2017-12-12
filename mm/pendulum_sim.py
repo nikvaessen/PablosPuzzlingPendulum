@@ -15,8 +15,9 @@ from matplotlib.widgets import Slider, Button
 # derivative function
 def full_dy(y, m_p, l_p, l_1, l_2, g, b, u):
 	x_accel_term = l_1 * (u[0] * cos(y[2]) - y[3] ** 2 * sin(y[2])) + l_2 * ((u[0] + u[1]) * cos(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * sin(y[2] + y[4] - pi))
-	y_accel_term = l_1 * (-u[0] * sin(y[2]) - y[3] ** 2 * cos(y[2])) - l_2 * ((u[0] + u[1]) * sin(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * cos(y[2] + y[4] - pi))
-	return [y[1], -cos(y[0]) / l_p * x_accel_term - sin(y[0]) / l_p * y_accel_term - b / (m_p * l_p * l_p) * y[1] - g / l_p * sin(y[0]), y[3], u[0], y[5], u[1]]
+	#y_accel_term = l_1 * (-u[0] * sin(y[2]) - y[3] ** 2 * cos(y[2])) - l_2 * ((u[0] + u[1]) * sin(y[2] + y[4] - pi) - (y[3] + y[5]) ** 2 * cos(y[2] + y[4] - pi))
+	y_accel_term = l_1 * (u[0] * sin(y[2]) + y[3] ** 2 * cos(y[2])) + l_2 * ((u[0] + u[1]) * sin(y[2] + y[4] - pi) + (y[3] + y[5]) ** 2 * cos(y[2] + y[4] - pi))
+	return [y[1], -cos(y[0]) / l_p * x_accel_term - sin(y[0]) / l_p * y_accel_term - b / (m_p * l_p ** 2) * y[1] - g / l_p * sin(y[0]), y[3], u[0], y[5], u[1]]
 
 # parameters (estimated from physical setup)
 m_p = 0.01		# pendulum mass
@@ -43,19 +44,30 @@ pendulum_line.set_color('#01c155')
 pendulum_bob = plt.Circle((0, 0), 0.01, color='b')
 ax.add_artist(pendulum_bob)
 
+lower_joint, = ax.plot([], [], 'o-', lw=4.0, color='#01c155')
+upper_joint, = ax.plot([], [], 'o-', lw=4.0, color='#01c155')
+
 # initialising state and time-keeping
-state = [pi, 0, pi, 0, pi, speed]
+state = [pi, 0, pi, 0, pi, 0]
 t = 0
 previous = 0
 
 # animation update function
 def animate(i):
-	global m_p, l_p, l_1, l_2, g, b, state, t, previous
+	global m_p, l_p, l_1, l_2, g, b, state, t, previous, speed
 
-	diff = time.time() - previous
 	# computing next state
+	diff = time.time() - previous
+	if diff > 10:
+		diff = 0
 	state = integrate.odeint(lambda y, t: full_dy(y, m_p, l_p, l_1, l_2, g, b, [0, 0]), state, [0, diff])[1]
 	previous = time.time()
+
+	'''
+	if state[5] == 0 or state[4] > 3/2 * pi or state[4] < 1/2 * pi:
+		speed = -speed
+		state[5] = speed
+	'''
 
 	# computing positions for rendering
 	lower_joint_end = [l_1 * sin(state[2]), -l_1 * cos(state[2])]
