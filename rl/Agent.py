@@ -18,22 +18,23 @@ class DQNAgent:
     def __init__(self, state_size, action_size, action_map: DiscreteAction):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=50)
+        self.memory = deque(maxlen=200)
+        self.long_memory = deque(maxlen=2000)
         self.action_map = action_map
 
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 1 # exploration rate
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.975
-        self.learning_rate = 0.01
+        self.epsilon_decay = 0.99
+        self.learning_rate = 0.001
 
         self.model = self._build_model()
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(24, activation='relu'))
+        model.add(Dense(100, input_dim=self.state_size, activation='relu'))
+     #   model.add(Dense(100, activation='relu'))
         model.add(Dense(self.action_size, activation='softmax'))
         model.compile(loss='mse',
                       optimizer=Adam(lr=self.learning_rate))
@@ -52,27 +53,32 @@ class DQNAgent:
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
+        self.long_memory.append((state, action, reward, next_state, done))
 
-    def act(self, state):
-        if np.random.rand() <= self.epsilon:
+    def act(self, state, use_random_chance=True):
+        if use_random_chance and np.random.rand() <= self.epsilon:
             return self.action_map.get(random.randrange(self.action_size))
 
-        act_values = self.model.predict(state.reshape(1, 3))
+        act_values = self.model.predict(state.reshape(1, self.state_size))
         return self.action_map.get(np.argmax(act_values[0]))  # returns action
 
-    def replay(self, batch_size):
-        minibatch = random.sample(self.memory, batch_size)
+    def print_weights(self):
+        self.model
 
+    def replay(self, batch_size):
+        minibatch = random.sample(self.memory, batch_size) + random.sample(self.long_memory, batch_size)
+
+        print("training")
         for state, action, reward, next_state, done in minibatch:
             target = reward
 
             if not done:
               target = reward + self.gamma * \
-                       np.amax(self.model.predict(next_state.reshape(1, 3)))
-            target_f = self.model.predict(state.reshape(1, 3))
+                       np.amax(self.model.predict(next_state.reshape(1, self.state_size)))
+            target_f = self.model.predict(state.reshape(1, self.state_size))
 
             target_f[0][self.action_map.getIndex(action)] = target
-            self.model.fit(state.reshape(1, 3), target_f, epochs=1, verbose=0)
+            self.model.fit(state.reshape(1, self.state_size), target_f, epochs=1, verbose=0)
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay

@@ -25,6 +25,33 @@ from communication.com import Communicator
 ################################################################################
 # discrete action space for robot env
 
+class ActionMap:
+
+    def __init__(self, possible_actions):
+        idx = 0
+        self.actions = [0 for _ in range(0, len(possible_actions)**2)]
+        for i in range(len(possible_actions)):
+
+            for j in range(len(possible_actions)):
+                #print("init ({}, {}), with index {}".format(possible_actions[i], possible_actions[j], idx))
+                self.actions[idx] = (possible_actions[i], possible_actions[j])
+                idx += 1
+
+        for a in self.actions:
+            print(a)
+
+    def get(self, index):
+        return self.actions[index]
+
+    def getIndex(self, action):
+        idx = 0
+        for a in self.actions:
+            if action == a:
+                return idx
+            else:
+                idx += 1
+
+        raise ValueError("Could not get index of action")
 
 class DiscreteAction(Discrete):
 
@@ -35,7 +62,7 @@ class DiscreteAction(Discrete):
         idx = 0
         for i in range(lower, upper, stepsize):
             for j in range(lower, upper, stepsize):
-                print("init ({}, {}), with index {}".format(i, j, idx))
+                #print("init ({}, {}), with index {}".format(i, j, idx))
                 self.actions[idx] = (i, j)
                 idx += 1
         print(self.actions)
@@ -71,9 +98,9 @@ class RobotArm(gym.Env):
         # change to find right partition of space
         self.com = Communicator(usb_port=usb_port)
         self.time_step = time_step
-        self.joint1 = (0, 0)
-        self.joint2 = (0, 0)
-        self.pendulum = (0, 0)
+        self.joint1 = 0
+        self.joint2 = 0
+        self.prev_pendulum_pos = 0
         self.max_distance = np.linalg.norm(self.center - self.observation_space.low)
         self.swing_up = True
 
@@ -138,18 +165,19 @@ class RobotArm(gym.Env):
         done = False
 
         if self.swing_up:
-            if reward > 0.80:
+            if reward > 0.60:
                 self.swing_up = False
         else:
             if reward < 0.4:
                 done = True
 
-        if reward < 0.8:
+        if reward < 0.4:
+            reward = -.1
+        elif reward < 0.8:
             reward = 0
-
+        else: reward *= 3
 
         return state, reward, done, {}
-
 
     def multi_step(self, action, steps):
         return_list = [None] * steps
@@ -224,8 +252,10 @@ class RobotArm(gym.Env):
         """
         self.com.send_command(90, 90)
         self.swing_up = True
-        time.sleep(8)
-        return self._get_current_state()
+        time.sleep(7)
+        state = self._get_current_state()
+        state[3] = 0
+        return state
 
 ################################################################################
     def _update_joint(self, joint, new_pos):
@@ -233,7 +263,7 @@ class RobotArm(gym.Env):
         return new_pos
 
     def _update_pendulum(self, new_position):
-        new_vel = (new_position - self.pendulum[0]) / self.time_step
+        new_vel = (new_position - self.prev_pendulum_pos[0]) / self.time_step
         return new_position, new_vel
 
     def _reward(self, state):
@@ -264,14 +294,17 @@ class RobotArm(gym.Env):
         while not state or state[2] > 900:
             state = self.com.observe_state()
             count += 1
-
             if count > 10:
                 print("cannot read state!!! {}".format(state))
 
-        self.pendulum = state[0]
+        #print(state)
+        pendulum_vel = (state[0] - self.prev_pendulum_pos) * .030
+        #print(pendulum_vel)
+        pendulum_vel = min(10000, max(-10000, pendulum_vel))
+        self.prev_pendulum_pos = state[0]
         self.joint1 = state[1]
         self.joint2 = state[2]
-        state = np.array([self.pendulum, self.joint1, self.joint2])
+        state = np.array([state[0], self.joint1, self.joint2, pendulum_vel])
         return state
 
     def joses_madness(self, t, c):

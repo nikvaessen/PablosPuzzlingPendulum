@@ -6,11 +6,10 @@ from communication.com import Communicator
 from time import sleep, time
 from ourgym import RobotArm
 import math
+import numpy as np
 import rl.QLearner as ql
 from rl.Agent import DQNAgent
 
-
-port = "/dev/cu.usbserial-A6003X31" #on mac for jose, pablo and nik
 if sys.platform == 'linux' or sys.platform == 'linux2':
     port = '/dev/ttyUSB0'
 elif sys.platform == 'win32':
@@ -40,34 +39,43 @@ def learn():
     learner.run_n_episodes(100, 1000)
 
 def learn_dqn():
-    import numpy as np
-    from ourgym import DiscreteAction
+    from ourgym import ActionMap
 
-    state_size = 3
+    state_size = 4
     action_size = 49
     episodes = 500
-    max_episode_length = 100000  # 1000 / (1 / 0.025) = 25 secs
+    max_episode_length = 200  # 1000 / (1 / 0.025) = 25 secs
     iteration_length = 0.030
     safe_every = 5
+
+    action_map = ActionMap([-30, -15, -5, 0, 5, 15, 30])
 
     past_action = [90, 90]
 
     weight_file = "" # set manually each time
+    weight_path = "backup/" + weight_file
 
     # initialize gym environment and the agent
     env = RobotArm(port, time_step=0.0015)
     print("created robot")
-    action_map = DiscreteAction(49, -30, 31, 15)
     agent = DQNAgent(state_size, action_size, action_map)
 
     if weight_file is not "":
-        agent.load(weight_file)
-        print("loaded " + str(weight_file))
+        agent.load(weight_path)
+        print("loaded " + str(weight_path))
 
     # Iterate the environment
     for e in range(1, episodes + 1):
+        if e % 50 == 0:
+            for i in range(0, 10):
+                print("Going for an epsilon=0 run! Pay attention!!!")
+            past_action = [90, 90]
+            agent_non_random(env, agent, 200, iteration_length, past_action)
+
+        print("Starting episode {}".format(e))
         # reset state in the beginning of each episode
-        state = env.reset()
+        state = norm_state(env.reset())
+        past_action = [90, 90]
 
         # time_r represents the sum of the reward over the episode
         total_r = 0
@@ -83,6 +91,9 @@ def learn_dqn():
             # Reward is bases on the angle of the pendulum
             real_action = add_action_to_position(action, past_action)
             next_state, reward, done, _ = env.step(real_action)
+            #print(next_state)
+            next_state = norm_state(next_state)
+            #print(next_state)
 
             # Remember the previous state, action, reward, and done
             agent.remember(state, action, reward, next_state, done)
@@ -97,24 +108,79 @@ def learn_dqn():
             past_action = real_action
 
             if ct < desired_end_time:
-                sleep(desired_end_time - ct)
+                sleep_time = desired_end_time - ct
+                if sleep_time < 0:
+                    print("sleeping for: " + str(sleep_time))
+                sleep(sleep_time)
             else:
                 print("### warning took to long !!!! off by: {}".format(ct - desired_end_time))
 
             # done becomes True when the pendulum was swung up but fell down
-            if done or moves+1 == max_episode_length:
+            if done or moves + 1 == max_episode_length:
                 # print the score and break out of the loop
-                print("episode: {}/{}, score: {}, moves: {}"
-                      .format(e, episodes, total_r, moves + 1))
+                print("episode: {}/{}, score: {}, moves: {}, lr: {}"
+                      .format(e, episodes, total_r, moves + 1, agent.epsilon))
                 break
 
         # train the agent with the experience of the episode
-        if len(agent.memory) > 50:
+        if len(agent.memory) >= 50:
             agent.replay(50)
 
         if e % safe_every == 0:
             agent.safe()
 
+
+def agent_non_random(env, agent, max_episode_length, iteration_length, past_action):
+    # reset state in the beginning of each episode
+    state = norm_state(env.reset())
+
+    # time_r represents the sum of the reward over the episode
+    total_r = 0
+    for moves in range(max_episode_length):
+        # decide when this iteration should be over
+        start_time = time()
+        desired_end_time = start_time + iteration_length
+
+        # Decide action
+        action = agent.act(state, use_random_chance=False)
+        print(moves, action)
+
+        # Advance the environment to the next frame based on the action.
+        # Reward is bases on the angle of the pendulum
+        real_action = add_action_to_position(action, past_action)
+        next_state, reward, done, _ = env.step(real_action)
+        next_state = norm_state(next_state)
+
+        # Remember the previous state, action, reward, and done
+        #agent.remember(state, action, reward, next_state, done)
+
+        # make next_state the new current state for the next frame.
+        state = next_state
+
+        # sleep for the remaining time left, or warn when time-limit was exceeded
+        total_r += reward
+        # print("move {}: {}, {}, {}, {}, {}".format(moves + 1, state, action, reward, next_state, done))
+        ct = time()
+        past_action = real_action
+
+        if ct < desired_end_time:
+            print("sleeping for " + str(desired_end_time - ct))
+            sleep(desired_end_time - ct)
+        else:
+            print("### warning took to long !!!! off by: {}".format(ct - desired_end_time))
+
+        # done becomes True when the pendulum was swung up but fell down
+        if done or moves + 1 == max_episode_length:
+            # print the score and break out of the loop
+            print("Non-random episode: score: {}, moves: {}, lr: {}"
+                  .format(total_r, moves + 1, agent.epsilon))
+            break
+
+
+def norm_state(a, axis=-1, order=2):
+    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
+    l2[l2==0] = 1
+    return a / np.expand_dims(l2, axis)
 
 def move_test():
     port = "/dev/cu.usbserial-A6003X31"
@@ -215,6 +281,72 @@ def debug_reward():
         print(state, reward)
         sleep(0.1)
 
+def debug_state_trail(robot):
+    import random
+
+    random.seed(1337)
+
+    action1 = 90
+    action2 = 90
+    change = -30
+    iteration_length = 0.2
+
+    total_r = 0
+    state = robot.reset()
+
+    states = list()
+    states.append(state)
+
+    for moves in range(20):
+        # decide when this iteration should be over
+        start_time = time()
+        desired_end_time = start_time + iteration_length
+
+        # Decide action
+        change = random.randint(-50, 50)
+        action = (action1 + change, action2 + change)
+
+        # Advance the environment to the next frame based on the action.
+        # Reward is bases on the angle of the pendulum
+        #real_action = add_action_to_position(action, past_action)
+        next_state, reward, done, _ = robot.step(action)
+        # print(next_state)
+        #next_state = norm_state(next_state)
+        # print(next_state)
+
+        states.append((action, next_state))
+
+        # Remember the previous state, action, reward, and done
+        # agent.remember(state, action, reward, next_state, done)
+
+        # make next_state the new current state for the next frame.
+        state = next_state
+
+        # sleep for the remaining time left, or warn when time-limit was exceeded
+        total_r += reward
+        # print("move {}: {}, {}, {}, {}, {}".format(moves + 1, state, action, reward, next_state, done))
+        ct = time()
+
+        if ct < desired_end_time:
+            sleep_time = desired_end_time - ct
+            if sleep_time < 0:
+                print("sleeping for: " + str(sleep_time))
+            sleep(sleep_time)
+        else:
+            print("### warning took to long !!!! off by: {}".format(ct - desired_end_time))
+
+        # done becomes True when the pendulum was swung up but fell down
+        if done or moves + 1 == 100:
+            # print the score and break out of the loop
+            print("score: {}, moves: {}"
+                  .format( total_r, moves + 1))
+            break
+
+    print("run results:\n")
+    for s in states:
+        print(s)
+
+    robot.reset()
 
 if __name__ == '__main__':
     learn_dqn()

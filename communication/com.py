@@ -70,7 +70,7 @@ class Communicator:
     failure_token = "FAILURE".encode()
 
     lower_joint_offset = -10
-    upper_joint_offset = -15
+    upper_joint_offset = -10
 
     def __init__(self, usb_port, baudrate=9600):
         # open serial connection
@@ -95,6 +95,7 @@ class Communicator:
             self.ser.flushInput()
             return
 
+        self.ser.flushInput()
         self.ser.write(Communicator.request_data_token)
         self.ser.flush()
         # while self.ser.inWaiting():

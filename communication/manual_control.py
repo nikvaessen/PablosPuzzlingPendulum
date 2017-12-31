@@ -8,11 +8,11 @@ if sys.platform == 'linux' or sys.platform == 'linux2':
 elif sys.platform == 'win32':
     port = 'COM4'
 
-com = Communicator(usb_port='/dev/ttyUSB0')
+com = Communicator(usb_port=port)
 conv = Converter()
 change = 30
 while True:
-    '''
+
     commands = input('Command: ').split(' ')
     
     if commands[0] == 'read':
@@ -24,5 +24,6 @@ while True:
     #change = -change
     #com.ser.write('READ\n'.encode())
     print(com.observe_state())
+    '''
 
     time.sleep(0.01)
