@@ -38,6 +38,7 @@ class DiscreteAction(Discrete):
                 print("init ({}, {}), with index {}".format(i, j, idx))
                 self.actions[idx] = (i, j)
                 idx += 1
+        print(self.actions)
 
     def get(self, index):
         return self.actions[index]
@@ -49,7 +50,6 @@ class DiscreteAction(Discrete):
                 return idx
             else:
                 idx += 1
-
 
     def sample(self):
         return self.actions[super(DiscreteAction, self).sample()]

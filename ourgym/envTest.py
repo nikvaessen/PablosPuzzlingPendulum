@@ -1,6 +1,6 @@
 import sys
 import os.path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../communication'))
+sys.path.append('../')
 
 from communication.com import Communicator
 from time import sleep, time
