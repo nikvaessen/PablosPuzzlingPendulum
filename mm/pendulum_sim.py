@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # imports
 import numpy as np
 import numpy.linalg as la
