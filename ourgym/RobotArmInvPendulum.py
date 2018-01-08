@@ -13,14 +13,15 @@
 #
 ################################################################################
 
-import sys, math
 import numpy as np
 import time
-#import Box2D
 
 import gym
 from gym.spaces import Box, Discrete
 from communication.com import Communicator
+
+# disable numpy printing numbers in scientific notation
+np.set_printoptions(suppress=True)
 
 ################################################################################
 # discrete action space for robot env
@@ -85,40 +86,46 @@ class DiscreteAction(Discrete):
 ################################################################################
 # The environment class doing the simulation work
 
-
 class RobotArm(gym.Env):
     """
     The Environment class responsible for the simulation
     """
-    # TODO rewrite to use with ourgym.spaces.Box
-
-    def __init__(self, usb_port, time_step=10):
-        # self.world = Box2D.b2World()
-        # body = self.world.CreateBody(Box2D.b2BodyDef())
-        # change to find right partition of space
+    def __init__(self, usb_port, time_step=10/1000):
+        # The communicator object responsible for talking with the sensors and motors.
         self.com = Communicator(usb_port=usb_port)
+
+        # The amount of time in ms to wait when a motor command was send.
         self.time_step = time_step
-        self.joint1 = 0
-        self.joint2 = 0
+
+        # storage of robot state. These values are used for computing velocity and to determine
+        # end of episodes
         self.prev_pendulum_pos = 0
-        self.max_distance = np.linalg.norm(self.center - self.observation_space.low)
         self.swing_up = True
 
 ################################################################################
 # Properties which need to be set to create a valid Environment.
 
     # The action space defines all possible actions which can be taken during
-    # one episode of the task
+    # one episode of the task.
     action_space = DiscreteAction(49, -30, 31, 15)
 
     # The observation space defines all possible states the environment can
-    # take during one episode of a the task
+    # take during one episode of a the task.
+    # The first value is the position of the pendulum.
+    # The second value is the position of the lower motor joint.
+    # The third value is the position of the upper motor joint.
+    # The fourth value is the difference in position of the pendulum
+    # between the current and previous state. This value is capped at 1000.
+    observation_space = Box(np.array([0, 400, 400, 0]), np.array([1024, 600, 600, 1000]))
 
-    observation_space = Box(np.array([0, 400, 400]), np.array([1020, 600, 600]))
-    center = np.array([600, 530, 530])
+    # The positions when the pendulum is either pointing upwards (center_up)
+    # or pointing down (center_down)
+    center_up = np.array([625, 525, 519])
+    center_down = np.array([60, 525, 519])
+
+    # The motor joint's angles are bounded to the following positions:
     # lower motor max/left=600     min/right=400
     # upper motor max/left=600     min/right=400
-    # center = [600, 530, 510]
 
 ################################################################################
 # Abstract methods which need to be overridden to create a valid Environment.
@@ -162,6 +169,7 @@ class RobotArm(gym.Env):
         state = self._get_current_state()
 
         reward = self._reward(state)
+        actual_reward = reward
         done = False
 
         if self.swing_up:
@@ -175,9 +183,10 @@ class RobotArm(gym.Env):
             reward = -.1
         elif reward < 0.8:
             reward = 0
-        else: reward *= 3
+        else:
+            reward *= 3
 
-        return state, reward, done, {}
+        return state, reward, done, {'actual_reward' : actual_reward}
 
     def multi_step(self, action, steps):
         return_list = [None] * steps
@@ -252,9 +261,11 @@ class RobotArm(gym.Env):
         """
         self.com.send_command(90, 90)
         self.swing_up = True
+
         time.sleep(7)
         state = self._get_current_state()
         state[3] = 0
+        self.prev_pendulum_pos = 0
         return state
 
 ################################################################################
@@ -263,28 +274,40 @@ class RobotArm(gym.Env):
         return new_pos
 
     def _update_pendulum(self, new_position):
-        new_vel = (new_position - self.prev_pendulum_pos[0]) / self.time_step
+        new_vel = (new_position - self.prev_pendulum_pos) / self.time_step
         return new_position, new_vel
 
     def _reward(self, state):
-        j2 = state[2]
-        if j2 > self.center[2]:
-            j2 = self.center[2] - abs(self.center[2] - j2)
-        else:
-            j2 = self.center[2] + abs(self.center[2] - j2)
+        """
 
-        target = self.center[0] - (state[1] - self.center[1]) + (j2 - self.center[2])
-        current = state[0]
-        dist = self.joses_madness(target, current)
-        max_dist = 512
+        :param state:
+        :return:
+        """
 
-        if dist > max_dist:
-            #return -1
-            return 0
+        corrected_state = self.pendulum_pos_correction(state)
+
+        highest_target = self.center_up[0]
+        lowest_target = self.center_down[0]
+
+        max_dist = None
+        pos = corrected_state[0]
+
+        option = 0
+        if pos >= lowest_target and pos <= highest_target:
+            option = 1
+            dist = highest_target - pos
+            max_dist = highest_target - lowest_target + 1
+        elif pos > highest_target:
+            option = 2
+            dist = pos - highest_target
+            max_dist = lowest_target + (1024 - highest_target) + 1
         else:
-            #r = 1 - (dist / max_dist)
-            #return -1 if r < 0.8 else r
-            return 1 - (dist / max_dist)
+            option = 3
+            max_dist = lowest_target + (1024 - highest_target) + 1
+            dist = pos + (1024 - highest_target)
+
+        print(pos, lowest_target, highest_target, dist, max_dist, option)
+        return 1 - (dist / max_dist)
 
 
     def _get_current_state(self):
@@ -307,7 +330,7 @@ class RobotArm(gym.Env):
         state = np.array([state[0], self.joint1, self.joint2, pendulum_vel])
         return state
 
-    def joses_madness(self, t, c):
+    def pendulum_pos_correction_jose(self, t, c):
         d = 0
         if t + 512 > 1024:
             if c > t:
@@ -325,6 +348,40 @@ class RobotArm(gym.Env):
                 d = t + (1024 - c)
 
         return d
+
+    def pendulum_pos_correction(self, state, center_j1=None, center_j2=None):
+        """
+        Correct the pendulum position in the state due to the potentiometer's center point
+        being moved.
+
+        e.g
+        If joint 1 is angled 20 units to the right, the center point has to be moved 20 points to the left
+        or
+        if joint 1 is angled 20 units to the right and joint 2 40 units to the right,
+        the center point needs to be pointed 20+40 = 60 units to the left
+
+        :param state the state object, in the order [pendulum pos, joint 1 pos, joint 2 pos, pend velocity]
+        :param center_j1 the position where joint 1 is angled 90 degrees upwards
+        :param center_j2 the position where joint 2 is angled 90 degrees upwards
+
+        :return a copy of the given state object where the pendulum position has been corrected
+        """
+        if center_j1 is None:
+            center_j1 = self.center_up[2]
+        if center_j2 is None:
+            center_j2 = self.center_up[1]
+
+        joint1_units_off_center = state[1] - center_j1
+        joint2_units_off_center = state[2] - center_j2
+        correction = joint1_units_off_center + joint2_units_off_center
+
+        pend_state = (state[0] + correction) % 1024
+
+        corrected_state = np.array(state)
+        corrected_state[0] = pend_state
+
+        print(joint1_units_off_center, joint2_units_off_center, correction)
+        return corrected_state
 
 ################################################################################
 

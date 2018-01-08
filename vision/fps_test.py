@@ -9,6 +9,8 @@ import os
 import sys
 import random
 
+from ourgym import RobotArm
+
 # import the Queue class from Python 3
 if sys.version_info >= (3, 0):
     from queue import LifoQueue
@@ -80,15 +82,14 @@ if __name__ == '__main__':
     take_images_for_s = 5
     total_count = desired_fps * take_images_for_s
 
-    cam_worker = VideoCaptureWorker(0)
+    cam_worker = VideoCaptureWorker(0, queueSize=0)
     cam_worker.cam.set(6, desired_fps) # https://stackoverflow.com/questions/11420748/setting-camera-parameters-in-opencv-python
     cam_worker.start()
 
-    serial = Communicator("/dev/cu.usbserial-A6003X31") #on mac for jose, pablo and nik
+    #robot = RobotArm("/dev/cu.usbserial-A6003X31") #on mac for jose, pablo and nik
     sleep(1)
 
-    print("Starting")
-    print("Initial position: {}".format(serial.observe_state()))
+    #state = robot.reset()
 
     count = 0
     buffer = [None for _ in range(0, total_count)]
@@ -97,17 +98,23 @@ if __name__ == '__main__':
     base = 90
     offset = 30
 
+    print("Starting, running for {} seconds with a total of {} iterations".format(take_images_for_s, total_count))
+    #print("Initial position: {} current time: {}\n".format(state, datetime.now()))
+
     while count < total_count:
+        print(count)
         end_iteration_time = time() + iteration_length_in_s
 
-        serial.send_command(base + random.randint(-offset, offset + 1), base + random.randint(-offset, offset + 1))
-        sleep(0.005)
+        #action = (base + random.randint(-offset, offset + 1), base + random.randint(-offset, offset + 1))
+        #state, reward, done, info = robot.step(action)
 
         img = cam_worker.read()
         buffer[count] = img
         count += 1
-        print(count, datetime.now(), serial.observe_state())
 
+        #print(state, action, reward, info['actual_reward'], datetime.now())
+        print()
+        
         sleep_for = end_iteration_time - time()
         if sleep_for > 0:
             sleep(sleep_for)
@@ -117,11 +124,11 @@ if __name__ == '__main__':
     end_time = time()
     print(end_time - start_time)
 
-    cam_worker.stop()
+    # cam_worker.stop()
 
     ct = time()
     path = "video_backup/{}".format(ct)
     os.mkdir(path)
     for i, img in enumerate(buffer):
-        imwrite(os.path.join(path, "file_{}.jpg".format(i)), img)
+        imwrite(os.path.join(path, "file_{}.jpg".format(i)), img, )
 

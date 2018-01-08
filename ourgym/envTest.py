@@ -14,7 +14,8 @@ if sys.platform == 'linux' or sys.platform == 'linux2':
     port = '/dev/ttyUSB0'
 elif sys.platform == 'win32':
     port = 'COM4'
-
+else:
+    port = "/dev/cu.usbserial-A6003X31"
 
 def learn():
     env1 = RobotArm(usb_port=port)
@@ -183,12 +184,6 @@ def norm_state(a, axis=-1, order=2):
     return a / np.expand_dims(l2, axis)
 
 def move_test():
-    port = "/dev/cu.usbserial-A6003X31"
-    if sys.platform == 'linux' or sys.platform == 'linux2':
-        port = '/dev/ttyUSB0'
-    elif sys.platform == 'win32':
-        port = 'COM4'
-
     #com = Communicator(usb_port=port, baudrate=9600)
     change = 30
 
@@ -277,9 +272,11 @@ def debug_reward():
 
     while True:
         state = robot._get_current_state()
+        corrected_state = robot.pendulum_pos_correction(state)
         reward = robot._reward(state)
-        print(state, reward)
-        sleep(0.1)
+        print(state, corrected_state, reward)
+        print()
+        sleep(0.5)
 
 def debug_state_trail(robot):
     import random
@@ -349,4 +346,4 @@ def debug_state_trail(robot):
     robot.reset()
 
 if __name__ == '__main__':
-    learn_dqn()
+    debug_reward()
