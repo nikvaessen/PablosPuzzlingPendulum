@@ -22,8 +22,8 @@ class DQNAgent:
         self.gamma = 0.99    # discount rate
         self.epsilon = 1 # exploration rate
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.999
-        self.learning_rate = 0.0001
+        self.epsilon_decay = 0.995
+        self.learning_rate = 0.00001
 
         self.model = self._build_model()
 
@@ -72,6 +72,7 @@ class DQNAgent:
             if not done:
               target = reward + self.gamma * \
                        np.amax(self.model.predict(next_state.reshape(1, self.state_size)))
+
             target_f = self.model.predict(state.reshape(1, self.state_size))
 
             target_f[0][action] = target

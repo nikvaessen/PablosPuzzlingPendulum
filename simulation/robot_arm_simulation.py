@@ -71,8 +71,11 @@ class RobotArmSimulator(threading.Thread):
             #print("Velocity:", self.state[3])
 
             time_after_execution = time.time()
-            time.sleep(0 if (time_after_execution - current_time) > self.interval else self.interval - (time_after_execution - current_time))
-            self.step_counter = self.step_counter + 1
+            #print("Time taken for parallel computations: {}s".format(time_after_execution - current_time))
+            #time.sleep(0 if (time_after_execution - current_time) > self.interval else self.interval - (time_after_execution - current_time))
+            time.sleep(0.00000001)
+            self.step_counter += 1
+            #print(self.step_counter)
 
 
     @property
@@ -81,8 +84,12 @@ class RobotArmSimulator(threading.Thread):
 
     @current_target.setter
     def current_target(self, new_target):
+        self.step_counter = 0
         self.__current_target[0] = new_target[0]
         self.__current_target[1] = new_target[1]
+
+    def get_counter(self):
+        return self.step_counter
 
     def __derivative(self, state, params, u=[0, 0]):
         # unwrapping parameters
@@ -155,11 +162,20 @@ class RobotArmEnvironment(gym.Env):
         if actual_action[1] + self.simulation.state[4] < 3/4 * pi: actual_action[1] = 0
         elif actual_action[1] + self.simulation.state[4] > 5/4 * pi: actual_action[1] = 0
 
+        print("Start state: {}".format(self.simulation.state))
         self.simulation.current_target = self.simulation.current_target + np.array(actual_action)
         start = time.time()
-        while time.time() - start < 0.005:
-            self._render()
+        # while time.time() - start < 0.005:
+        #     self._render()
+        something_small = simons_penis = 0.00001
+        while True:
+            time.sleep(something_small)
+            if self.simulation.get_counter() >= 3:
+                break
+        #print(time.time() - start)
         observation = self.__convert_observation(self.simulation.state)
+        print("End state: {}".format(self.simulation.state))
+
 
         return np.array(observation), self.__reward(self.simulation.state), False, {}
 
