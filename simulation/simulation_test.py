@@ -8,10 +8,6 @@ from simulation import RobotArmEnvironment
 if __name__ == '__main__':
 
     with RobotArmEnvironment() as env:
-            for i in range(25):
-                print(env.action_map.get(i))
-
-
             env.reset()
             try:
                 interval = 1.0
@@ -30,8 +26,8 @@ if __name__ == '__main__':
                         env.simulation.current_target = [target, target] if env.simulation.current_target[0] == other_target else [other_target, other_target]
                         #pass
                     env.render()
-                    state, reward, done, _ = env.step(env.action_space.sample())
-                    print(env.simulation.state[:2], "- Reward:", reward)
+                    #state, reward, done, _ = env.step(env.action_space.sample())
+                    #print(env.simulation.state[:2], "- Reward:", reward)
                     time.sleep(0.01)
                     #print("vel[1] =", state[3], "vel[2] =", state[5], "control_signal =", env.simulation.control_signal)
                     counter = counter + 1

@@ -281,7 +281,11 @@ class RobotArmEnvironment(gym.Env):
     ################################################################################
 
     def __reward(self, state):
-        return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
+        if abs(state[0] - np.pi) <= 1/6 * pi and abs(state[1]) <= 2 * pi:
+            return np.e ** -abs(state[1])
+        else:
+            return -1
+        #return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
 
     def __convert_action(self, realworld_action):
         ## the [0], [0]
