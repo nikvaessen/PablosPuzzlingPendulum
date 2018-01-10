@@ -65,6 +65,9 @@ if __name__ == '__main__':
             if episode_idx % 100 == 0:
                 agent.safe()
 
+            if (episode_idx + 1) % 10 == 0:
+                agent.plot_weights()
+
             # print("done with episode, sleeping.... zzzzz")
             # ct = time()
             # while True:
