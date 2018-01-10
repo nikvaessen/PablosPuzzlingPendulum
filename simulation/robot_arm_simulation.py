@@ -11,19 +11,20 @@ from gym.spaces import Box, Discrete
 from numpy import pi, sin, cos
 from ourgym import DiscreteAction
 
+
 class RobotArmSimulator(threading.Thread):
 
-    def __init__(self, 
-            params,             # (M_P, L_P, L_1, L_2, b, g)
-            init_state = [
-                0,              # theta_P
-                0,              # vtheta_P
-                pi,             # theta_1
-                0,              # vtheta_1
-                pi,             # theta_2
-                0               # vtheta_2
-            ]
-        ):
+    def __init__(self,
+                 params,  # (M_P, L_P, L_1, L_2, b, g)
+                 init_state=[
+                     0,  # theta_P
+                     0,  # vtheta_P
+                     pi,  # theta_1
+                     0,  # vtheta_1
+                     pi,  # theta_2
+                     0  # vtheta_2
+                 ]
+                 ):
         super(RobotArmSimulator, self).__init__()
 
         # thread control stuff
@@ -55,28 +56,35 @@ class RobotArmSimulator(threading.Thread):
             # TODO: check for maximum velocity/acceleration (or fix the observed problem in a different way)
 
             # integrating to get the new state and "correcting" to remain within the range 0-2pi
-            self.state = integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self.state, [0, self.interval])[1]
-            self.state[0] = self.state[0] if 0 <= self.state[0] < 2 * pi else (self.state[0] - math.floor(self.state[0] / (2 * pi)) * 2 * pi if 0 <= self.state[0] else (1 - math.floor(self.state[0] / (2 * pi))) * 2 * pi - self.state[0])
-            self.state[2] = self.state[2] if 0 <= self.state[2] < 2 * pi else (self.state[2] - math.floor(self.state[2] / (2 * pi)) * 2 * pi if 0 <= self.state[2] else (1 - math.floor(self.state[2] / (2 * pi))) * 2 * pi - self.state[2])
-            self.state[4] = self.state[4] if 0 <= self.state[4] < 2 * pi else (self.state[4] - math.floor(self.state[4] / (2 * pi)) * 2 * pi if 0 <= self.state[4] else (1 - math.floor(self.state[4] / (2 * pi))) * 2 * pi - self.state[4])
-            
-            if abs(self.state[3]) > 4 * pi: 
+            self.state = \
+            integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self.state,
+                             [0, self.interval])[1]
+            self.state[0] = self.state[0] if 0 <= self.state[0] < 2 * pi else (
+            self.state[0] - math.floor(self.state[0] / (2 * pi)) * 2 * pi if 0 <= self.state[0] else (1 - math.floor(
+                self.state[0] / (2 * pi))) * 2 * pi - self.state[0])
+            self.state[2] = self.state[2] if 0 <= self.state[2] < 2 * pi else (
+            self.state[2] - math.floor(self.state[2] / (2 * pi)) * 2 * pi if 0 <= self.state[2] else (1 - math.floor(
+                self.state[2] / (2 * pi))) * 2 * pi - self.state[2])
+            self.state[4] = self.state[4] if 0 <= self.state[4] < 2 * pi else (
+            self.state[4] - math.floor(self.state[4] / (2 * pi)) * 2 * pi if 0 <= self.state[4] else (1 - math.floor(
+                self.state[4] / (2 * pi))) * 2 * pi - self.state[4])
+
+            if abs(self.state[3]) > 4 * pi:
                 self.state[3] = 4 * pi * np.sign(self.state[3])
                 print("LOWER JOINT CLIPPED, TARGET:", self.__current_target)
-            if abs(self.state[5]) > 4 * pi: 
+            if abs(self.state[5]) > 4 * pi:
                 self.state[5] = 4 * pi * np.sign(self.state[5])
                 print("UPPER JOINT CLIPPED, TARGET:", self.__current_target)
 
-            #self.state[3] = new_velocity if abs(new_velocity) > self.threshold else 0.0
-            #print("Velocity:", self.state[3])
+            # self.state[3] = new_velocity if abs(new_velocity) > self.threshold else 0.0
+            # print("Velocity:", self.state[3])
 
             time_after_execution = time.time()
-            #print("Time taken for parallel computations: {}s".format(time_after_execution - current_time))
-            #time.sleep(0 if (time_after_execution - current_time) > self.interval else self.interval - (time_after_execution - current_time))
+            # print("Time taken for parallel computations: {}s".format(time_after_execution - current_time))
+            # time.sleep(0 if (time_after_execution - current_time) > self.interval else self.interval - (time_after_execution - current_time))
             time.sleep(0.00000001)
             self.step_counter += 1
-            #print(self.step_counter)
-
+            # print(self.step_counter)
 
     @property
     def current_target(self):
@@ -91,16 +99,133 @@ class RobotArmSimulator(threading.Thread):
     def get_counter(self):
         return self.step_counter
 
+
     def __derivative(self, state, params, u=[0, 0]):
         # unwrapping parameters
         (M_P, L_P, L_1, L_2, b, g) = params
 
         # computing intermediary results
-        x_accel_term = L_1 * (u[0] * cos(state[2]) - state[3] ** 2 * sin(state[2])) + L_2 * ((u[0] + u[1]) * cos(state[2] + state[4] - pi) - (state[3] + state[5]) ** 2 * sin(state[2] + state[4] - pi))
-        y_accel_term = L_1 * (u[0] * sin(state[2]) + state[3] ** 2 * cos(state[2])) + L_2 * ((u[0] + u[1]) * sin(state[2] + state[4] - pi) + (state[3] + state[5]) ** 2 * cos(state[2] + state[4] - pi))
+        x_accel_term = L_1 * (u[0] * cos(state[2]) - state[3] ** 2 * sin(state[2])) + L_2 * (
+                (u[0] + u[1]) * cos(state[2] + state[4] - pi) - (state[3] + state[5]) ** 2 * sin(
+            state[2] + state[4] - pi))
+        y_accel_term = L_1 * (u[0] * sin(state[2]) + state[3] ** 2 * cos(state[2])) + L_2 * (
+                (u[0] + u[1]) * sin(state[2] + state[4] - pi) + (state[3] + state[5]) ** 2 * cos(
+            state[2] + state[4] - pi))
 
         # returning resulting derivative vector
-        return [state[1], -cos(state[0]) / L_P * x_accel_term - sin(state[0]) / L_P * y_accel_term - b / (M_P * L_P ** 2) * state[1] - g / L_P * sin(state[0]), state[3], u[0], state[5], u[1]]
+        return [state[1],
+                -cos(state[0]) / L_P * x_accel_term - sin(state[0]) / L_P * y_accel_term - b / (M_P * L_P ** 2) * state[
+                    1] - g / L_P * sin(state[0]), state[3], u[0], state[5], u[1]]
+
+
+class RobotArmSimulatorSerial:
+
+    def __init__(self,
+                 params,  # (M_P, L_P, L_1, L_2, b, g)
+                 init_state=[
+                     0,  # theta_P
+                     0,  # vtheta_P
+                     pi,  # theta_1
+                     0,  # vtheta_1
+                     pi,  # theta_2
+                     0  # vtheta_2
+                 ]
+                 ):
+
+        # pendulum simulation stuff
+        self.params = params
+        self.state = init_state
+
+        # pseudo P(ID)A control
+        self.interval = 0.005
+        self.step_counter = 0
+        self.threshold = 0.001
+        self.max_acceleration = 50.0
+        self.kp = 20.0
+        self.ka = 3.0
+        self.__current_target = np.array([self.state[2], self.state[4]])
+        self.control_signal = None
+
+    def advance(self, n):
+        for _ in range(n):
+            self.__step()
+
+    def __step(self):
+        current_time = time.time()
+
+        current_error = self.__current_target - [self.state[2], self.state[4]]
+        new_velocity = self.kp * current_error
+        if abs(new_velocity[0]) > 4 * pi: new_velocity[0] = 4 * pi * np.sign(new_velocity[0])
+        if abs(new_velocity[1]) > 4 * pi: new_velocity[1] = 4 * pi * np.sign(new_velocity[1])
+        self.control_signal = self.ka * self.kp * (new_velocity - [self.state[3], self.state[5]])
+        # TODO: check for maximum velocity/acceleration (or fix the observed problem in a different way)
+
+        # integrating to get the new state and "correcting" to remain within the range 0-2pi
+        self.state = \
+        integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self.state,
+                         [0, self.interval])[1]
+        self.state[0] = self.state[0] if 0 <= self.state[0] < 2 * pi else (
+        self.state[0] - math.floor(self.state[0] / (2 * pi)) * 2 * pi if 0 <= self.state[0] else (1 - math.floor(
+            self.state[0] / (2 * pi))) * 2 * pi - self.state[0])
+        self.state[2] = self.state[2] if 0 <= self.state[2] < 2 * pi else (
+        self.state[2] - math.floor(self.state[2] / (2 * pi)) * 2 * pi if 0 <= self.state[2] else (1 - math.floor(
+            self.state[2] / (2 * pi))) * 2 * pi - self.state[2])
+        self.state[4] = self.state[4] if 0 <= self.state[4] < 2 * pi else (
+        self.state[4] - math.floor(self.state[4] / (2 * pi)) * 2 * pi if 0 <= self.state[4] else (1 - math.floor(
+            self.state[4] / (2 * pi))) * 2 * pi - self.state[4])
+
+        if abs(self.state[3]) > 4 * pi:
+            self.state[3] = 4 * pi * np.sign(self.state[3])
+            print("LOWER JOINT CLIPPED, TARGET:", self.__current_target)
+        if abs(self.state[5]) > 4 * pi:
+            self.state[5] = 4 * pi * np.sign(self.state[5])
+            print("UPPER JOINT CLIPPED, TARGET:", self.__current_target)
+
+        # self.state[3] = new_velocity if abs(new_velocity) > self.threshold else 0.0
+        # print("Velocity:", self.state[3])
+
+        time_after_execution = time.time()
+        # print("Time taken for parallel computations: {}s".format(time_after_execution - current_time))
+        # time.sleep(0 if (time_after_execution - current_time) > self.interval else self.interval - (time_after_execution - current_time))
+        # print(self.step_counter)
+        self.step_counter += 1
+
+    def start(self):
+        pass
+
+    def join(self):
+        pass
+
+    @property
+    def current_target(self):
+        return self.__current_target
+
+    @current_target.setter
+    def current_target(self, new_target):
+        self.step_counter = 0
+        self.__current_target[0] = new_target[0]
+        self.__current_target[1] = new_target[1]
+
+    def get_counter(self):
+        self.advance(1)
+        return self.step_counter
+
+    def __derivative(self, state, params, u=[0, 0]):
+        # unwrapping parameters
+        (M_P, L_P, L_1, L_2, b, g) = params
+
+        # computing intermediary results
+        x_accel_term = L_1 * (u[0] * cos(state[2]) - state[3] ** 2 * sin(state[2])) + L_2 * (
+                (u[0] + u[1]) * cos(state[2] + state[4] - pi) - (state[3] + state[5]) ** 2 * sin(
+            state[2] + state[4] - pi))
+        y_accel_term = L_1 * (u[0] * sin(state[2]) + state[3] ** 2 * cos(state[2])) + L_2 * (
+                (u[0] + u[1]) * sin(state[2] + state[4] - pi) + (state[3] + state[5]) ** 2 * cos(
+            state[2] + state[4] - pi))
+
+        # returning resulting derivative vector
+        return [state[1],
+                -cos(state[0]) / L_P * x_accel_term - sin(state[0]) / L_P * y_accel_term - b / (M_P * L_P ** 2) * state[
+                    1] - g / L_P * sin(state[0]), state[3], u[0], state[5], u[1]]
 
 
 class RobotArmEnvironment(gym.Env):
@@ -129,7 +254,7 @@ class RobotArmEnvironment(gym.Env):
 
         # pendulum simulation stuff
         self.params = (M_P, L_P, L_1, L_2, b, g)
-        self.simulation = RobotArmSimulator(self.params)
+        self.simulation = RobotArmSimulatorSerial(self.params)
         self.simulation.start()
 
         # Map the disctete action space to a "real" action
@@ -162,22 +287,24 @@ class RobotArmEnvironment(gym.Env):
         if actual_action[1] + self.simulation.state[4] < 3/4 * pi: actual_action[1] = 0
         elif actual_action[1] + self.simulation.state[4] > 5/4 * pi: actual_action[1] = 0
 
-        print("Start state: {}".format(self.simulation.state))
+        #print("Start state: {}".format(self.simulation.state))
         self.simulation.current_target = self.simulation.current_target + np.array(actual_action)
         start = time.time()
         # while time.time() - start < 0.005:
         #     self._render()
         something_small = simons_penis = 0.00001
+
         while True:
             time.sleep(something_small)
             if self.simulation.get_counter() >= 3:
                 break
+
         #print(time.time() - start)
-        observation = self.__convert_observation(self.simulation.state)
-        print("End state: {}".format(self.simulation.state))
+        #observation = self.__convert_observation(self.simulation.state)
+        #print("End state: {}".format(self.simulation.state))
 
 
-        return np.array(observation), self.__reward(self.simulation.state), False, {}
+        return self.__normalize_state(np.array(self.simulation.state)), self.__reward(self.simulation.state), False, {}
 
     def _render(self, mode='human', close=False):
         if close:
@@ -272,9 +399,9 @@ class RobotArmEnvironment(gym.Env):
         # not a nice way of doing this, might want to change it
         self.simulation.terminated = True
         self.simulation.join()
-        self.simulation = RobotArmSimulator(self.params)
+        self.simulation = RobotArmSimulatorSerial(self.params)
         self.simulation.start()
-        return last_state
+        return self.__normalize_state(np.array(last_state))
 
     ################################################################################
     # Other methods
@@ -284,7 +411,7 @@ class RobotArmEnvironment(gym.Env):
         if abs(state[0] - np.pi) <= 1/6 * pi and abs(state[1]) <= 2 * pi:
             return np.e ** -abs(state[1])
         else:
-            return -1
+            return 0
         #return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
 
     def __convert_action(self, realworld_action):
@@ -303,3 +430,16 @@ class RobotArmEnvironment(gym.Env):
 
     def __convert_observation(self, simulation_observation):
         return [int(obs * (1024 / (2 * pi))) for obs in simulation_observation]
+
+    @staticmethod
+    def __normalize_state(state):
+        # state is size 6,
+        # index 0, 2 and 4 are positions with bounds
+        # index 1, 3 and 5 are velocities with bounds -inf, inf
+        state[0] = (state[0] - pi) / pi
+        state[1] = np.sign(state[1]) * (1 + np.e ** (-0.1 * abs(state[1])))
+        state[2] = (state[2] - pi) / pi
+        state[3] = (state[3] - pi) / (4 * pi)
+        state[4] = (state[4] - pi) / pi
+        state[5] = (state[5] - pi) / (4 * pi)
+        return state

@@ -3,7 +3,7 @@ from rl import DQNAgent
 from time import sleep, time
 
 number_of_episodes = 10000
-max_iterations_per_episode = 200
+max_iterations_per_episode = 400
 
 
 if __name__ == '__main__':
@@ -25,8 +25,9 @@ if __name__ == '__main__':
 
             ct_act, ct_step, ct_rem = 0, 0, 0
             for i in range(max_iterations_per_episode):
-                #if episode_idx % 50 == 0:
-                #env.render()
+                if (episode_idx+1) % 10 == 0 or episode_idx == 0:
+                    env.render()
+                    sleep(1/60)
 
                 ct_act = time()
                 action = agent.act(state)

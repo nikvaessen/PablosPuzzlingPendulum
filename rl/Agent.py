@@ -8,6 +8,7 @@ from collections import deque
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
+from keras.regularizers import l1
 
 
 # Deep Q-learning Agent
@@ -23,16 +24,16 @@ class DQNAgent:
         self.epsilon = 1 # exploration rate
         self.epsilon_min = 0.05
         self.epsilon_decay = 0.995
-        self.learning_rate = 0.00001
+        self.learning_rate = 0.0001
 
         self.model = self._build_model()
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        model.add(Dense(320, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(320, activation='relu'))
-        model.add(Dense(320, activation='relu'))
+        model.add(Dense(320, input_dim=self.state_size, activation='relu', kernel_regularizer=l1(1)))
+        model.add(Dense(320, activation='relu', kernel_regularizer=l1(1)))
+        model.add(Dense(320, activation='relu', kernel_regularizer=l1(1)))
         model.add(Dense(self.action_size, activation='softmax'))
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
 
@@ -42,6 +43,11 @@ class DQNAgent:
         if not os.path.isdir("backup"):
             os.makedirs("backup")
         self.model.save_weights("backup/weights_" + str(time.time()))
+
+        for layer in self.model.layers:
+            weights = layer.get_weights()
+            print(weights[0].shape)
+            print(layer.get_weights())
 
     def load(self, path):
         if not os.path.exists(path):
