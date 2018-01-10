@@ -56,6 +56,9 @@ env = gym.make(env_to_use)
 state_dim = np.prod(np.array(env.observation_space.shape))  # Get total number of dimensions in state
 action_dim = np.prod(np.array(env.action_space.shape))  # Assuming continuous action space
 
+print(state_dim)
+print(action_dim)
+
 # set seeds to 0
 env.seed(0)
 np.random.seed(0)

@@ -108,7 +108,7 @@ class RobotArmEnvironment(gym.Env):
             L_P = 0.09,         # pendulum length
             L_1 = 0.12,         # lower segment length
             L_2 = 0.03,         # upper segment length
-            b = 0.00005,        # damping on pendulum axis
+            b = 0.0001,        # damping on pendulum axis
             g = 9.81            # gravity    
         ):
         super(RobotArmEnvironment, self).__init__()
@@ -125,6 +125,9 @@ class RobotArmEnvironment(gym.Env):
         self.simulation = RobotArmSimulator(self.params)
         self.simulation.start()
 
+        # Map the disctete action space to a "real" action
+        self.action_map = DiscreteAction(self.action_space.n, -30, 31, 15)
+
     def __enter__(self):
         return self
 
@@ -132,7 +135,7 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.terminated = True
         self.simulation.join()
 
-    action_space = DiscreteAction(25, -30, 31, 15)
+    action_space = Discrete(25)
     observation_space = Box(np.array([0, 256, 256]), np.array([1023, 768, 768]))
     center = np.array([512, 512, 512])
 
@@ -144,7 +147,7 @@ class RobotArmEnvironment(gym.Env):
         return super(RobotArmEnvironment, self)._seed(seed)
 
     def _step(self, action, take_action=True):
-        actual_action = self.__convert_action(action)
+        actual_action = self.__convert_action(self.action_map.get(action))
 
         if actual_action[0] + self.simulation.state[2] < 3/4 * pi: actual_action[0] = 0
         elif actual_action[0] + self.simulation.state[2] > 5/4 * pi: actual_action[0] = 0
@@ -157,7 +160,8 @@ class RobotArmEnvironment(gym.Env):
         while time.time() - start < 0.005:
             self._render()
         observation = self.__convert_observation(self.simulation.state)
-        return observation, 0, False, {}
+
+        return np.array(observation), self.__reward(self.simulation.state), False, {}
 
     def _render(self, mode='human', close=False):
         if close:
@@ -261,9 +265,10 @@ class RobotArmEnvironment(gym.Env):
     ################################################################################
 
     def __reward(self, state):
-        return 0
+        return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
 
     def __convert_action(self, realworld_action):
+        ## the [0], [0]
         # under the assumption that the maximum range 
         # of the used potentiometers is 0-1023
         converted_actions = []
