@@ -257,9 +257,6 @@ class RobotArmEnvironment(gym.Env):
         self.simulation = RobotArmSimulatorSerial(self.params)
         self.simulation.start()
 
-        # Map the disctete action space to a "real" action
-        self.action_map = DiscreteAction(self.action_space.n, -30, 31, 15)
-
     def __enter__(self):
         return self
 
@@ -267,7 +264,11 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.terminated = True
         self.simulation.join()
 
-    action_space = Discrete(25)
+    # Map the disctete action space to a "real" action
+    action_space = Discrete(3600)
+    action_map = DiscreteAction(action_space.n, -30, 30, 1)
+
+
     observation_space = Box(np.array([0, 256, 256]), np.array([1023, 768, 768]))
     center = np.array([512, 512, 512])
 
@@ -280,7 +281,7 @@ class RobotArmEnvironment(gym.Env):
 
     def _step(self, action, take_action=True):
         actual_action = self.__convert_action(self.action_map.get(action))
-
+        #print(self.action_map.get(action))
         if actual_action[0] + self.simulation.state[2] < 3/4 * pi: actual_action[0] = 0
         elif actual_action[0] + self.simulation.state[2] > 5/4 * pi: actual_action[0] = 0
 

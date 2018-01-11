@@ -9,6 +9,8 @@ max_iterations_per_episode = 400
 if __name__ == '__main__':
 
     agent = DQNAgent(6, 25)
+    agent.epsilon = 0.05
+    agent.load('backup/weights_1515613961.468759')
 
     with RobotArmEnvironment() as env:
 
@@ -58,7 +60,7 @@ if __name__ == '__main__':
             #print("act:{}, step:{}, remember:{}, overhead:{}".
             #      format(act_per, step_per, rem_per, over_per))
 
-            agent.replay(int(max_iterations_per_episode*0.25))
+            agent.replay(int(max_iterations_per_episode))
             print("episode {}/{}, average reward {}, epsilon {}, time taken {}s".format(
                 episode_idx + 1, number_of_episodes, tr, agent.epsilon, time() - ct))
 

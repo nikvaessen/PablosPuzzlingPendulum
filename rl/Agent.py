@@ -19,23 +19,23 @@ class DQNAgent:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=200)
+        self.memory = deque(maxlen=400)
         #self.long_memory = deque(maxlen=2000)
 
-        self.gamma = 0.99    # discount rate
+        self.gamma = 0.999    # discount rate
         self.epsilon = 1 # exploration rate
         self.epsilon_min = 0.05
         self.epsilon_decay = 0.995
-        self.learning_rate = 0.0001
+        self.learning_rate = 0.001
 
         self.model = self._build_model()
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        model.add(Dense(10, input_dim=self.state_size, activation='relu', kernel_regularizer=l1(1)))
-        model.add(Dense(10, activation='relu', kernel_regularizer=l1(1)))
-        model.add(Dense(10, activation='relu', kernel_regularizer=l1(1)))
+        model.add(Dense(320, input_dim=self.state_size, activation='relu', kernel_regularizer=l1(1)))
+        model.add(Dense(320, activation='relu', kernel_regularizer=l1(1)))
+        model.add(Dense(320, activation='relu', kernel_regularizer=l1(1)))
         model.add(Dense(self.action_size, activation='softmax'))
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
 

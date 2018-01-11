@@ -14,11 +14,12 @@
 ################################################################################
 
 import numpy as np
-import time
 
 import gym
 from gym.spaces import Box, Discrete
 from communication.com import Communicator
+
+from time import sleep, time
 
 # disable numpy printing numbers in scientific notation
 np.set_printoptions(suppress=True)
@@ -90,7 +91,7 @@ class RobotArm(gym.Env):
     """
     The Environment class responsible for the simulation
     """
-    def __init__(self, usb_port, time_step=10/1000):
+    def __init__(self, usb_port, max_step_count=100, time_step=10/1000):
         # The communicator object responsible for talking with the sensors and motors.
         self.com = Communicator(usb_port=usb_port)
 
@@ -100,14 +101,20 @@ class RobotArm(gym.Env):
         # storage of robot state. These values are used for computing velocity and to determine
         # end of episodes
         self.prev_pendulum_pos = 0
+        self.step_count = 0
+        self.max_step_count = max_step_count
         self.swing_up = True
+
+        self._reset()
 
 ################################################################################
 # Properties which need to be set to create a valid Environment.
 
     # The action space defines all possible actions which can be taken during
     # one episode of the task.
-    action_space = DiscreteAction(49, -30, 31, 15)
+    action_space_dim = 169
+    action_map = DiscreteAction(action_space_dim, -30, 31, 5)
+    action_space = Discrete(action_space_dim)
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task.
@@ -116,7 +123,11 @@ class RobotArm(gym.Env):
     # The third value is the position of the upper motor joint.
     # The fourth value is the difference in position of the pendulum
     # between the current and previous state. This value is capped at 1000.
-    observation_space = Box(np.array([0, 400, 400, 0]), np.array([1024, 600, 600, 1000]))
+    num_obs_per_step = 6
+    num_states_per_obs = 4
+    state_dim = num_states_per_obs * num_obs_per_step
+    observation_space = Box(np.array([0, 400, 400, 0] * num_obs_per_step).reshape(state_dim),
+                            np.array([1024, 600, 600, 1000] * num_obs_per_step).reshape(state_dim))
 
     # The positions when the pendulum is either pointing upwards (center_up)
     # or pointing down (center_down)
@@ -162,38 +173,59 @@ class RobotArm(gym.Env):
                          debugging, and sometimes learning)
         """
         if take_action:
-            self.com.send_command(action[0], action[1])
+            if type(action) != int and action < self.action_space_dim and action >= self.action_space_dim:
+                raise ValueError("not a valid action")
 
-        time.sleep(self.time_step) # wait x ms to observe what the effect of the action was on the state
+            at = self.action_map.get(action)
+            at = (self.prev_command[0] + at[0],  self.prev_command[1] + at[1])
+            #print(action, at)
+            self.com.send_command(at[0], at[1])
+            sleep(0.005)
+
+        st = time()
+        states = []
+        for i in range(self.num_obs_per_step):
+            states.append(self._get_current_state())
+            sleep(0.005)
+
+        #print("{} ms".format((time() - st)* 1000))
+        #print("(state, reward)'s : ", end="")
+        reward = 0
+        for st in states:
+            reward += self._reward(st)
+            #print("({}, {})".format(st, reward), end=",")
+         #print()
+
+        #sleep(self.time_step) # wait x ms to observe what the effect of the action was on the state
+        self.step_count += 1
 
         state = self._get_current_state()
 
-        reward = self._reward(state)
         actual_reward = reward
-        done = False
+        done = True if self.step_count >= self.max_step_count else False
 
-        if self.swing_up:
-            if reward > 0.60:
-                self.swing_up = False
-        else:
-            if reward < 0.4:
-                done = True
+        # if self.swing_up:
+        #     if reward > 0.60:
+        #         self.swing_up = False
+        # else:
+        #     if reward < 0.4:
+        #         done = True
+        #
+        # if reward < 0.4:
+        #     reward = -.1
+        # elif reward < 0.8:
+        #     reward = 0
+        # else:
+        #     reward *= 3
 
-        if reward < 0.4:
-            reward = -.1
-        elif reward < 0.8:
-            reward = 0
-        else:
-            reward *= 3
-
-        return state, reward, done, {'actual_reward' : actual_reward}
+        return np.array(states).reshape(self.state_dim), reward, done, {'actual_reward' : actual_reward}
 
     def multi_step(self, action, steps):
         return_list = [None] * steps
 
         for i in range(0, steps):
             take_action = False
-            start_time = time.time()
+            start_time = time()
             end_time = start_time + 0.02
 
             if i == 0:
@@ -205,11 +237,11 @@ class RobotArm(gym.Env):
             if done:
                 break
             else:
-                ct = time.time()
+                ct = time()
                 print("step took " + str(ct-start_time))
                 sleep_for = end_time - ct
                 if sleep_for > 0:
-                    time.sleep(sleep_for)
+                    sleep(sleep_for)
                 else:
                     print("### WARNING step took longer than 10 ms")
 
@@ -261,12 +293,15 @@ class RobotArm(gym.Env):
         """
         self.com.send_command(90, 90)
         self.swing_up = True
+        self.prev_command = (90, 90)
 
-        time.sleep(7)
-        state = self._get_current_state()
-        state[3] = 0
+        sleep(7)
+
+        self.state = self._get_current_state()
+        self.state[3] = 0
         self.prev_pendulum_pos = 0
-        return state
+        self.step_count = 0
+        return np.array([self.state for _ in range(self.num_obs_per_step)]).reshape(self.state_dim)
 
 ################################################################################
     def _update_joint(self, joint, new_pos):
@@ -283,31 +318,38 @@ class RobotArm(gym.Env):
         :param state:
         :return:
         """
-
         corrected_state = self.pendulum_pos_correction(state)
 
-        highest_target = self.center_up[0]
-        lowest_target = self.center_down[0]
-
-        max_dist = None
-        pos = corrected_state[0]
-
-        option = 0
-        if pos >= lowest_target and pos <= highest_target:
-            option = 1
-            dist = highest_target - pos
-            max_dist = highest_target - lowest_target + 1
-        elif pos > highest_target:
-            option = 2
-            dist = pos - highest_target
-            max_dist = lowest_target + (1024 - highest_target) + 1
+        # Check if pendulum in upper region
+        if (self.center_up[0]) - 100 <= corrected_state[0] <= (self.center_up[0] + 100):
+            # it is, thus we give a reward between 0 and 1, which is closer to one
+            # the slower the velocity
+            return np.e ** -abs(0.2* corrected_state[3])
         else:
-            option = 3
-            max_dist = lowest_target + (1024 - highest_target) + 1
-            dist = pos + (1024 - highest_target)
+            return 0
 
-        print(pos, lowest_target, highest_target, dist, max_dist, option)
-        return 1 - (dist / max_dist)
+        # highest_target = self.center_up[0]
+        # lowest_target = self.center_down[0]
+        #
+        # max_dist = None
+        # pos = corrected_state[0]
+        #
+        # option = 0
+        # if pos >= lowest_target and pos <= highest_target:
+        #     option = 1
+        #     dist = highest_target - pos
+        #     max_dist = highest_target - lowest_target + 1
+        # elif pos > highest_target:
+        #     option = 2
+        #     dist = pos - highest_target
+        #     max_dist = lowest_target + (1024 - highest_target) + 1
+        # else:
+        #     option = 3
+        #     max_dist = lowest_target + (1024 - highest_target) + 1
+        #     dist = pos + (1024 - highest_target)
+        #
+        # print(pos, lowest_target, highest_target, dist, max_dist, option)
+        # return 1 - (dist / max_dist)
 
 
     def _get_current_state(self):
@@ -380,7 +422,7 @@ class RobotArm(gym.Env):
         corrected_state = np.array(state)
         corrected_state[0] = pend_state
 
-        print(joint1_units_off_center, joint2_units_off_center, correction)
+        #print(joint1_units_off_center, joint2_units_off_center, correction)
         return corrected_state
 
 ################################################################################
