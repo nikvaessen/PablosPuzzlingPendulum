@@ -240,7 +240,7 @@ class RobotArmEnvironment(gym.Env):
             L_P = 0.09,         # pendulum length
             L_1 = 0.12,         # lower segment length
             L_2 = 0.03,         # upper segment length
-            b = 0.0001,        # damping on pendulum axis
+            b = 0.0005,        # damping on pendulum axis
             g = 9.81            # gravity    
         ):
         super(RobotArmEnvironment, self).__init__()
@@ -269,7 +269,7 @@ class RobotArmEnvironment(gym.Env):
     action_map = DiscreteAction(action_space.n, -30, 30, 1)
 
 
-    observation_space = Box(np.array([0, 256, 256]), np.array([1023, 768, 768]))
+    observation_space = Box(np.array([0, 256, 256, 0, 0, 0]), np.array([1023, 768, 768, 1000, 1000, 1000]))
     center = np.array([512, 512, 512])
 
     ################################################################################

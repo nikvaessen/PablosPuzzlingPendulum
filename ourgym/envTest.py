@@ -4,7 +4,7 @@ sys.path.append('../')
 
 from communication.com import Communicator
 from time import sleep, time
-from ourgym import RobotArm
+from ourgym import RobotArm, RobotArmSwingUp
 import math
 import numpy as np
 import rl.QLearner as ql
@@ -268,7 +268,7 @@ def add_action_to_position(action, past_action):
     return a1, a2
 
 def debug_reward():
-    robot = RobotArm(usb_port=port)
+    robot = RobotArmSwingUp(usb_port=port)
 
     while True:
         state = robot._get_current_state()
@@ -276,7 +276,7 @@ def debug_reward():
         reward = robot._reward(state)
         print(state, corrected_state, reward)
         print()
-        sleep(0.5)
+        sleep(0.05)
 
 def debug_state_trail(robot):
     import random

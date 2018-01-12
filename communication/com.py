@@ -81,7 +81,8 @@ class Communicator:
             baudrate=baudrate,  # this needs to be set on micro-controller by doing Serial.begin(9600)
             parity=serial.PARITY_NONE,  # check parity of UC32, maybe it's even/odd
             stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS)  # set time-out higher if we want to wait for input
+            bytesize=serial.EIGHTBITS,
+            timeout=1)  # set time-out higher if we want to wait for input
         #for _ in range(0, 100):
         self.observe_state(supress_output=True)
         self.ser.reset_input_buffer()
@@ -106,6 +107,10 @@ class Communicator:
 
         try:
             b = list(self.ser.read(6))
+            if len(b) < 6:
+                print("I'm going to recur")
+                return self.observe_state()
+
             result = [b[0] * 256 + b[1], b[2] * 256 + b[3], b[4] * 256 + b[5]]
             return result
 

@@ -79,7 +79,7 @@ int adjust_for_deadzone(int pot) {
     llast_value = last_value;
     last_value = pot;
     if (in_critical_zone && in_range(pot, critical_value, pot_range - critical_value)) {
-        pot = 0;
+        pot = -1;
     }
     return pot;
 }
