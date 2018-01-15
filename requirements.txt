@@ -1,4 +1,5 @@
-tensorflow
+gym
+keras
 serial
 matplotlib
-gym
+tensorflow
