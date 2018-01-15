@@ -66,10 +66,14 @@ class DQNAgent:
 
     def act(self, state, use_random_chance=True):
         if use_random_chance and np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
+            action = random.randrange(self.action_size)
+            # print("Act randomly: {}".format(action))
+            return action
 
         act_values = self.model.predict(state.reshape(1, self.state_size))
-        return np.argmax(act_values[0]) # returns action
+        action = np.argmax(act_values[0]) # returns action
+        # print("Act non-randomly: {}".format(action))
+        return action
 
     def replay(self, batch_size):
         if len(self.memory) < batch_size:

@@ -12,27 +12,28 @@ from numpy import pi, sin, cos
 from ourgym import DiscreteAction
 
 
-class RobotArmSimulator(threading.Thread):
+class RobotArmSimulatorParallel(threading.Thread):
 
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
-                 init_state=[
+                 init_state=(
                      0,  # theta_P
                      0,  # vtheta_P
                      pi,  # theta_1
                      0,  # vtheta_1
                      pi,  # theta_2
                      0  # vtheta_2
-                 ]
+                 ),
+                 acceleration_control=False
                  ):
-        super(RobotArmSimulator, self).__init__()
+        super(RobotArmSimulatorParallel, self).__init__()
 
         # thread control stuff
         self.terminated = False
 
         # pendulum simulation stuff
         self.params = params
-        self.state = init_state
+        self._state = init_state
 
         # pseudo P(ID)A control
         self.interval = 0.005
@@ -41,39 +42,62 @@ class RobotArmSimulator(threading.Thread):
         self.max_acceleration = 50.0
         self.kp = 20.0
         self.ka = 3.0
-        self.__current_target = np.array([self.state[2], self.state[4]])
+        self.__current_target = np.array([self._state[2], self._state[4]])
         self.control_signal = None
+
+        # acceleration control stuff
+        self.acceleration_control = acceleration_control
+        self.acceleration_limit = pi
+        self.current_acceleration = (0, 0)
+
+        # noise parameters
+        self.step_noise = 0
+        self.observation_noise = 0
 
     def run(self):
         while not self.terminated:
             current_time = time.time()
 
-            current_error = self.__current_target - [self.state[2], self.state[4]]
-            new_velocity = self.kp * current_error
-            if abs(new_velocity[0]) > 4 * pi: new_velocity[0] = 4 * pi * np.sign(new_velocity[0])
-            if abs(new_velocity[1]) > 4 * pi: new_velocity[1] = 4 * pi * np.sign(new_velocity[1])
-            self.control_signal = self.ka * self.kp * (new_velocity - [self.state[3], self.state[5]])
-            # TODO: check for maximum velocity/acceleration (or fix the observed problem in a different way)
+            if not self.acceleration_control:
+                current_error = self.__current_target - [self._state[2], self._state[4]]
+                new_velocity = self.kp * current_error
+                if abs(new_velocity[0]) > 4 * pi: new_velocity[0] = 4 * pi * np.sign(new_velocity[0])
+                if abs(new_velocity[1]) > 4 * pi: new_velocity[1] = 4 * pi * np.sign(new_velocity[1])
+                self.control_signal = self.ka * self.kp * (new_velocity - [self._state[3], self._state[5]])
+            else:
+                self.control_signal = self.current_acceleration
 
             # integrating to get the new state and "correcting" to remain within the range 0-2pi
-            self.state = \
-            integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self.state,
-                             [0, self.interval])[1]
-            self.state[0] = self.state[0] if 0 <= self.state[0] < 2 * pi else (
-            self.state[0] - math.floor(self.state[0] / (2 * pi)) * 2 * pi if 0 <= self.state[0] else (1 - math.floor(
-                self.state[0] / (2 * pi))) * 2 * pi - self.state[0])
-            self.state[2] = self.state[2] if 0 <= self.state[2] < 2 * pi else (
-            self.state[2] - math.floor(self.state[2] / (2 * pi)) * 2 * pi if 0 <= self.state[2] else (1 - math.floor(
-                self.state[2] / (2 * pi))) * 2 * pi - self.state[2])
-            self.state[4] = self.state[4] if 0 <= self.state[4] < 2 * pi else (
-            self.state[4] - math.floor(self.state[4] / (2 * pi)) * 2 * pi if 0 <= self.state[4] else (1 - math.floor(
-                self.state[4] / (2 * pi))) * 2 * pi - self.state[4])
+            self._state = \
+                integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self._state,
+                                 [0, self.interval])[1]
+            self._state[0] = self._state[0] if 0 <= self._state[0] < 2 * pi else (
+                self._state[0] - math.floor(self._state[0] / (2 * pi)) * 2 * pi if 0 <= self._state[0] else (
+                                                                                                                 1 - math.floor(
+                                                                                                             self._state[
+                                                                                                                 0] / (
+                                                                                                                     2 * pi))) * 2 * pi -
+                                                                                                            self._state[0])
+            self._state[2] = self._state[2] if 0 <= self._state[2] < 2 * pi else (
+                self._state[2] - math.floor(self._state[2] / (2 * pi)) * 2 * pi if 0 <= self._state[2] else (
+                                                                                                                 1 - math.floor(
+                                                                                                             self._state[
+                                                                                                                 2] / (
+                                                                                                                     2 * pi))) * 2 * pi -
+                                                                                                            self._state[2])
+            self._state[4] = self._state[4] if 0 <= self._state[4] < 2 * pi else (
+                self._state[4] - math.floor(self._state[4] / (2 * pi)) * 2 * pi if 0 <= self._state[4] else (
+                                                                                                                 1 - math.floor(
+                                                                                                             self._state[
+                                                                                                                 4] / (
+                                                                                                                     2 * pi))) * 2 * pi -
+                                                                                                            self._state[4])
 
-            if abs(self.state[3]) > 4 * pi:
-                self.state[3] = 4 * pi * np.sign(self.state[3])
+            if abs(self._state[3]) > 4 * pi:
+                self._state[3] = 4 * pi * np.sign(self._state[3])
                 print("LOWER JOINT CLIPPED, TARGET:", self.__current_target)
-            if abs(self.state[5]) > 4 * pi:
-                self.state[5] = 4 * pi * np.sign(self.state[5])
+            if abs(self._state[5]) > 4 * pi:
+                self._state[5] = 4 * pi * np.sign(self._state[5])
                 print("UPPER JOINT CLIPPED, TARGET:", self.__current_target)
 
             # self.state[3] = new_velocity if abs(new_velocity) > self.threshold else 0.0
@@ -87,6 +111,10 @@ class RobotArmSimulator(threading.Thread):
             # print(self.step_counter)
 
     @property
+    def state(self):
+        return self._state + self.observation_noise * np.random.randn(len(self._state))
+
+    @property
     def current_target(self):
         return self.__current_target
 
@@ -95,12 +123,13 @@ class RobotArmSimulator(threading.Thread):
         self.step_counter = 0
         self.__current_target[0] = new_target[0]
         self.__current_target[1] = new_target[1]
+        self.__current_target += self.step_noise * np.random.randn(1, 2)
 
     def get_counter(self):
         return self.step_counter
 
-
-    def __derivative(self, state, params, u=[0, 0]):
+    @staticmethod
+    def __derivative(state, params, u=(0, 0)):
         # unwrapping parameters
         (M_P, L_P, L_1, L_2, b, g) = params
 
@@ -122,19 +151,20 @@ class RobotArmSimulatorSerial:
 
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
-                 init_state=[
+                 init_state=(
                      0,  # theta_P
                      0,  # vtheta_P
                      pi,  # theta_1
                      0,  # vtheta_1
                      pi,  # theta_2
                      0  # vtheta_2
-                 ]
+                 ),
+                 acceleration_control=False
                  ):
 
         # pendulum simulation stuff
         self.params = params
-        self.state = init_state
+        self._state = init_state
 
         # pseudo P(ID)A control
         self.interval = 0.005
@@ -143,51 +173,53 @@ class RobotArmSimulatorSerial:
         self.max_acceleration = 50.0
         self.kp = 20.0
         self.ka = 3.0
-        self.__current_target = np.array([self.state[2], self.state[4]])
+        self.__current_target = np.array([self._state[2], self._state[4]])
         self.control_signal = None
+
+        # torque control stuff
+        self.acceleration_control = acceleration_control
+        self.acceleration_limit = pi
+        self.current_acceleration = (0, 0)
+
+        # noise parameters
+        self.step_noise = 0
+        self.observation_noise = 0
 
     def advance(self, n):
         for _ in range(n):
             self.__step()
 
     def __step(self):
-        current_time = time.time()
-
-        current_error = self.__current_target - [self.state[2], self.state[4]]
-        new_velocity = self.kp * current_error
-        if abs(new_velocity[0]) > 4 * pi: new_velocity[0] = 4 * pi * np.sign(new_velocity[0])
-        if abs(new_velocity[1]) > 4 * pi: new_velocity[1] = 4 * pi * np.sign(new_velocity[1])
-        self.control_signal = self.ka * self.kp * (new_velocity - [self.state[3], self.state[5]])
-        # TODO: check for maximum velocity/acceleration (or fix the observed problem in a different way)
+        if not self.acceleration_control:
+            current_error = self.__current_target - [self._state[2], self._state[4]]
+            new_velocity = self.kp * current_error
+            if abs(new_velocity[0]) > 4 * pi: new_velocity[0] = 4 * pi * np.sign(new_velocity[0])
+            if abs(new_velocity[1]) > 4 * pi: new_velocity[1] = 4 * pi * np.sign(new_velocity[1])
+            self.control_signal = self.ka * self.kp * (new_velocity - [self._state[3], self._state[5]])
+        else:
+            self.control_signal = self.current_acceleration
 
         # integrating to get the new state and "correcting" to remain within the range 0-2pi
-        self.state = \
-        integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self.state,
-                         [0, self.interval])[1]
-        self.state[0] = self.state[0] if 0 <= self.state[0] < 2 * pi else (
-        self.state[0] - math.floor(self.state[0] / (2 * pi)) * 2 * pi if 0 <= self.state[0] else (1 - math.floor(
-            self.state[0] / (2 * pi))) * 2 * pi - self.state[0])
-        self.state[2] = self.state[2] if 0 <= self.state[2] < 2 * pi else (
-        self.state[2] - math.floor(self.state[2] / (2 * pi)) * 2 * pi if 0 <= self.state[2] else (1 - math.floor(
-            self.state[2] / (2 * pi))) * 2 * pi - self.state[2])
-        self.state[4] = self.state[4] if 0 <= self.state[4] < 2 * pi else (
-        self.state[4] - math.floor(self.state[4] / (2 * pi)) * 2 * pi if 0 <= self.state[4] else (1 - math.floor(
-            self.state[4] / (2 * pi))) * 2 * pi - self.state[4])
+        self._state = \
+            integrate.odeint(lambda y, t: self.__derivative(y, self.params, self.control_signal), self._state,
+                             [0, self.interval])[1]
+        self._state[0] = self._state[0] if 0 <= self._state[0] < 2 * pi else (
+            self._state[0] - math.floor(self._state[0] / (2 * pi)) * 2 * pi if 0 <= self._state[0] else (1 - math.floor(
+                self._state[0] / (2 * pi))) * 2 * pi - self._state[0])
+        self._state[2] = self._state[2] if 0 <= self._state[2] < 2 * pi else (
+            self._state[2] - math.floor(self._state[2] / (2 * pi)) * 2 * pi if 0 <= self._state[2] else (1 - math.floor(
+                self._state[2] / (2 * pi))) * 2 * pi - self._state[2])
+        self._state[4] = self._state[4] if 0 <= self._state[4] < 2 * pi else (
+            self._state[4] - math.floor(self._state[4] / (2 * pi)) * 2 * pi if 0 <= self._state[4] else (1 - math.floor(
+                self._state[4] / (2 * pi))) * 2 * pi - self._state[4])
 
-        if abs(self.state[3]) > 4 * pi:
-            self.state[3] = 4 * pi * np.sign(self.state[3])
+        if abs(self._state[3]) > 4 * pi:
+            self._state[3] = 4 * pi * np.sign(self._state[3])
             print("LOWER JOINT CLIPPED, TARGET:", self.__current_target)
-        if abs(self.state[5]) > 4 * pi:
-            self.state[5] = 4 * pi * np.sign(self.state[5])
+        if abs(self._state[5]) > 4 * pi:
+            self._state[5] = 4 * pi * np.sign(self._state[5])
             print("UPPER JOINT CLIPPED, TARGET:", self.__current_target)
 
-        # self.state[3] = new_velocity if abs(new_velocity) > self.threshold else 0.0
-        # print("Velocity:", self.state[3])
-
-        time_after_execution = time.time()
-        # print("Time taken for parallel computations: {}s".format(time_after_execution - current_time))
-        # time.sleep(0 if (time_after_execution - current_time) > self.interval else self.interval - (time_after_execution - current_time))
-        # print(self.step_counter)
         self.step_counter += 1
 
     def start(self):
@@ -195,6 +227,10 @@ class RobotArmSimulatorSerial:
 
     def join(self):
         pass
+
+    @property
+    def state(self):
+        return self._state + self.observation_noise * np.random.randn(len(self._state))
 
     @property
     def current_target(self):
@@ -205,12 +241,14 @@ class RobotArmSimulatorSerial:
         self.step_counter = 0
         self.__current_target[0] = new_target[0]
         self.__current_target[1] = new_target[1]
+        self.__current_target += self.step_noise * np.random.randn(2)
 
     def get_counter(self):
         self.advance(1)
         return self.step_counter
 
-    def __derivative(self, state, params, u=[0, 0]):
+    @staticmethod
+    def __derivative(state, params, u=(0, 0)):
         # unwrapping parameters
         (M_P, L_P, L_1, L_2, b, g) = params
 
@@ -229,20 +267,19 @@ class RobotArmSimulatorSerial:
 
 
 class RobotArmEnvironment(gym.Env):
-
     metadata = {
         'render.modes': ['human', 'rgb_array', 'ansi'],
-        'video.frames_per_second' : 60
+        'video.frames_per_second': 60
     }
 
     def __init__(self,
-            M_P = 0.04,        # pendulum mass
-            L_P = 0.09,         # pendulum length
-            L_1 = 0.12,         # lower segment length
-            L_2 = 0.03,         # upper segment length
-            b = 0.0005,        # damping on pendulum axis
-            g = 9.81            # gravity    
-        ):
+                 M_P=0.04,  # pendulum mass
+                 L_P=0.09,  # pendulum length
+                 L_1=0.12,  # lower segment length
+                 L_2=0.03,  # upper segment length
+                 b=0.0005,  # damping on pendulum axis
+                 g=9.81  # gravity
+                 ):
         super(RobotArmEnvironment, self).__init__()
 
         # rendering stuff
@@ -265,9 +302,8 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.join()
 
     # Map the disctete action space to a "real" action
-    action_space = Discrete(3600)
-    action_map = DiscreteAction(action_space.n, -30, 30, 1)
-
+    action_space = Discrete(25)
+    action_map = DiscreteAction(action_space.n, -30, 31, 15)
 
     observation_space = Box(np.array([0, 256, 256, 0, 0, 0]), np.array([1023, 768, 768, 1000, 1000, 1000]))
     center = np.array([512, 512, 512])
@@ -281,31 +317,33 @@ class RobotArmEnvironment(gym.Env):
 
     def _step(self, action, take_action=True):
         actual_action = self.__convert_action(self.action_map.get(action))
-        #print(self.action_map.get(action))
-        if actual_action[0] + self.simulation.state[2] < 3/4 * pi: actual_action[0] = 0
-        elif actual_action[0] + self.simulation.state[2] > 5/4 * pi: actual_action[0] = 0
 
-        if actual_action[1] + self.simulation.state[4] < 3/4 * pi: actual_action[1] = 0
-        elif actual_action[1] + self.simulation.state[4] > 5/4 * pi: actual_action[1] = 0
+        state_before_action = self.simulation.state
 
-        #print("Start state: {}".format(self.simulation.state))
+        if actual_action[0] + state_before_action[2] < 3 / 4 * pi:
+            actual_action[0] = 0
+        elif actual_action[0] + state_before_action[2] > 5 / 4 * pi:
+            actual_action[0] = 0
+
+        if actual_action[1] + state_before_action[4] < 3 / 4 * pi:
+            actual_action[1] = 0
+        elif actual_action[1] + state_before_action[4] > 5 / 4 * pi:
+            actual_action[1] = 0
+
         self.simulation.current_target = self.simulation.current_target + np.array(actual_action)
-        start = time.time()
-        # while time.time() - start < 0.005:
-        #     self._render()
-        something_small = simons_penis = 0.00001
+        something_small = 0.00001
 
         while True:
             time.sleep(something_small)
-            if self.simulation.get_counter() >= 3:
+            if self.simulation.get_counter() >= 6:
                 break
+        # TODO: replace this with advance(3)?
+        # NOTE: for the serial simulation, the interval should be changed depending on how many
+        #       states are being observed/how many steps the simulation is advanced; otherwise
+        #       it may not be possible to do a swing-up at all
 
-        #print(time.time() - start)
-        #observation = self.__convert_observation(self.simulation.state)
-        #print("End state: {}".format(self.simulation.state))
-
-
-        return self.__normalize_state(np.array(self.simulation.state)), self.__reward(self.simulation.state), False, {}
+        state_after_action = self.simulation.state
+        return self.__normalize_state(np.array(state_after_action)), self.__reward(state_after_action), False, {}
 
     def _render(self, mode='human', close=False):
         if close:
@@ -314,9 +352,11 @@ class RobotArmEnvironment(gym.Env):
                 self.viewer = None
             return
 
-        state = self.simulation.state
+        state = self.simulation._state
         if mode == 'ansi':
-            print('theta_P: {:3f}, vtheta_P: {:3f}, 1theta_1: {:3f}, vtheta_1: {:3f}, theta_2: {:3f}, vtheta_2: {:3f}'.format(state[0], state[1], state[2], state[3], state[4], state[5]))
+            print(
+                'theta_P: {:3f}, vtheta_P: {:3f}, 1theta_1: {:3f}, vtheta_1: {:3f}, theta_2: {:3f}, vtheta_2: {:3f}'.format(
+                    state[0], state[1], state[2], state[3], state[4], state[5]))
             return
 
         (M_P, L_P, L_1, L_2, b, g) = self.params
@@ -328,14 +368,17 @@ class RobotArmEnvironment(gym.Env):
             screen_height = int(self.scaling_factor * (L_P + L_1 + L_2) + 100)
             self.viewer = rendering.Viewer(screen_width, screen_height)
 
-            s1w = 8    # segment 1 width
-            s2w = 8    # segment 2 width
-            pw = 7     # pendulum width
+            s1w = 8  # segment 1 width
+            s2w = 8  # segment 2 width
+            pw = 7  # pendulum width
 
             # creating the movable segments and pendulum
-            segment_1 = rendering.FilledPolygon([(-s1w, s1w), (s1w, s1w), (s1w, -self.scaling_factor * L_1 - s1w), (-s1w, -self.scaling_factor * L_1 - s1w)])
-            segment_2 = rendering.FilledPolygon([(-s2w, s2w), (s2w, s2w), (s2w, -self.scaling_factor * L_2 - s2w), (-s2w, -self.scaling_factor * L_2 - s2w)])
-            pendulum = rendering.FilledPolygon([(-7, 7), (7, 7), (7, -self.scaling_factor * L_P - 7), (-7, -self.scaling_factor * L_P - 7)])
+            segment_1 = rendering.FilledPolygon([(-s1w, s1w), (s1w, s1w), (s1w, -self.scaling_factor * L_1 - s1w),
+                                                 (-s1w, -self.scaling_factor * L_1 - s1w)])
+            segment_2 = rendering.FilledPolygon([(-s2w, s2w), (s2w, s2w), (s2w, -self.scaling_factor * L_2 - s2w),
+                                                 (-s2w, -self.scaling_factor * L_2 - s2w)])
+            pendulum = rendering.FilledPolygon(
+                [(-7, 7), (7, 7), (7, -self.scaling_factor * L_P - 7), (-7, -self.scaling_factor * L_P - 7)])
 
             # setting different colors
             segment_1.set_color(.8, .6, .4)
@@ -355,7 +398,8 @@ class RobotArmEnvironment(gym.Env):
             # defining initial transforms (everything upright for now, rotation might change depending on initial angle)
             self.segment_1_trans = rendering.Transform(translation=(300, 50))
             self.segment_2_trans = rendering.Transform(translation=(300, 50 + self.scaling_factor * L_1))
-            self.pendulum_trans = rendering.Transform(translation=(300, 50 + self.scaling_factor * L_1 + self.scaling_factor * L_2))
+            self.pendulum_trans = rendering.Transform(
+                translation=(300, 50 + self.scaling_factor * L_1 + self.scaling_factor * L_2))
 
             # adding transforms to the created shapes
             segment_1.add_attr(self.segment_1_trans)
@@ -393,7 +437,7 @@ class RobotArmEnvironment(gym.Env):
         self.pendulum_trans.set_translation(pend_x_trans, pend_y_trans)
         self.pendulum_trans.set_rotation(state[0])
 
-        return self.viewer.render(return_rgb_array = (mode == 'rgb_array'))
+        return self.viewer.render(return_rgb_array=(mode == 'rgb_array'))
 
     def _reset(self):
         last_state = self.simulation.state
@@ -408,14 +452,16 @@ class RobotArmEnvironment(gym.Env):
     # Other methods
     ################################################################################
 
-    def __reward(self, state):
-        if abs(state[0] - np.pi) <= 1/6 * pi and abs(state[1]) <= 2 * pi:
+    @staticmethod
+    def __reward(state):
+        if abs(state[0] - np.pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
             return np.e ** -abs(state[1])
         else:
             return 0
-        #return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
+        # return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
 
-    def __convert_action(self, realworld_action):
+    @staticmethod
+    def __convert_action(realworld_action):
         ## the [0], [0]
         # under the assumption that the maximum range 
         # of the used potentiometers is 0-1023
@@ -429,7 +475,8 @@ class RobotArmEnvironment(gym.Env):
             converted_actions.append(converted_action)
         return converted_actions
 
-    def __convert_observation(self, simulation_observation):
+    @staticmethod
+    def __convert_observation(simulation_observation):
         return [int(obs * (1024 / (2 * pi))) for obs in simulation_observation]
 
     @staticmethod
