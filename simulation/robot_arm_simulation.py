@@ -9,7 +9,7 @@ import math
 import gym
 from gym.spaces import Box, Discrete
 from numpy import pi, sin, cos
-from ourgym import DiscreteAction
+from ourgym import AbsoluteDiscreteActionMap
 
 
 class RobotArmSimulatorParallel(threading.Thread):
@@ -196,6 +196,10 @@ class RobotArmSimulatorSerial:
             if abs(new_velocity[0]) > 4 * pi: new_velocity[0] = 4 * pi * np.sign(new_velocity[0])
             if abs(new_velocity[1]) > 4 * pi: new_velocity[1] = 4 * pi * np.sign(new_velocity[1])
             self.control_signal = self.ka * self.kp * (new_velocity - [self._state[3], self._state[5]])
+            # print("Target: {}, Position: {}, Error: {}, Control signal: {}".format(self.__current_target,
+            #                                                                        self._state,
+            #                                                                        current_error,
+            #                                                                        self.control_signal))
         else:
             self.control_signal = self.current_acceleration
 
@@ -241,6 +245,7 @@ class RobotArmSimulatorSerial:
         self.step_counter = 0
         self.__current_target[0] = new_target[0]
         self.__current_target[1] = new_target[1]
+        # print("Target on assignment: {}, {}".format(self.__current_target, new_target))
         self.__current_target += self.step_noise * np.random.randn(2)
 
     def get_counter(self):
@@ -302,8 +307,8 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.join()
 
     # Map the disctete action space to a "real" action
-    action_space = Discrete(25)
-    action_map = DiscreteAction(action_space.n, -30, 31, 15)
+    action_space = Discrete(81)
+    action_map = AbsoluteDiscreteActionMap(45, 135, 9)
 
     observation_space = Box(np.array([0, 256, 256, 0, 0, 0]), np.array([1023, 768, 768, 1000, 1000, 1000]))
     center = np.array([512, 512, 512])
@@ -317,26 +322,27 @@ class RobotArmEnvironment(gym.Env):
 
     def _step(self, action, take_action=True):
         actual_action = self.__convert_action(self.action_map.get(action))
-
+        # print(actual_action)
         state_before_action = self.simulation.state
 
-        if actual_action[0] + state_before_action[2] < 3 / 4 * pi:
-            actual_action[0] = 0
-        elif actual_action[0] + state_before_action[2] > 5 / 4 * pi:
-            actual_action[0] = 0
+        # if actual_action[0] + state_before_action[2] < 3 / 4 * pi:
+        #     actual_action[0] = 0
+        # elif actual_action[0] + state_before_action[2] > 5 / 4 * pi:
+        #     actual_action[0] = 0
+        #
+        # if actual_action[1] + state_before_action[4] < 3 / 4 * pi:
+        #     actual_action[1] = 0
+        # elif actual_action[1] + state_before_action[4] > 5 / 4 * pi:
+        #     actual_action[1] = 0
 
-        if actual_action[1] + state_before_action[4] < 3 / 4 * pi:
-            actual_action[1] = 0
-        elif actual_action[1] + state_before_action[4] > 5 / 4 * pi:
-            actual_action[1] = 0
-
-        self.simulation.current_target = self.simulation.current_target + np.array(actual_action)
-        something_small = 0.00001
+        self.simulation.current_target = np.array(actual_action)
+        something_small = 0.0000001
 
         while True:
             time.sleep(something_small)
-            if self.simulation.get_counter() >= 6:
+            if self.simulation.get_counter() >= 10:
                 break
+
         # TODO: replace this with advance(3)?
         # NOTE: for the serial simulation, the interval should be changed depending on how many
         #       states are being observed/how many steps the simulation is advanced; otherwise
@@ -454,8 +460,8 @@ class RobotArmEnvironment(gym.Env):
 
     @staticmethod
     def __reward(state):
-        if abs(state[0] - np.pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
-            return np.e ** -abs(state[1])
+        if abs(state[0] - pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
+            return np.e ** -abs(state[1]) * 10
         else:
             return 0
         # return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
@@ -471,7 +477,7 @@ class RobotArmEnvironment(gym.Env):
                 converted_actions.append(0)
                 continue
 
-            converted_action = action * (2 * pi / 1024)
+            converted_action = action * ((2 * pi) / 360) + (0.5 * pi)
             converted_actions.append(converted_action)
         return converted_actions
 

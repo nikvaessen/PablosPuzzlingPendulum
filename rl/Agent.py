@@ -13,31 +13,97 @@ from keras.optimizers import Adam
 from keras.regularizers import l1
 
 
-# Deep Q-learning Agent
-class DQNAgent:
+class Agent:
 
-    def __init__(self, state_size, action_size):
+    def __init__(self,
+                 state_size: int,
+                 action_size: int,
+                 memory_size: int,
+                 epsilon_start: int,
+                 epsilon_finish: int,
+                 epsilon_decay_steps: int,
+                 discount_rate: int,
+                 learning_rate: int,
+                 amount_layers: int,
+                 amount_nodes_layer: tuple):
+
+        # model size
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=400)
-        #self.long_memory = deque(maxlen=2000)
 
-        self.gamma = 0.999    # discount rate
-        self.epsilon = 1 # exploration rate
-        self.epsilon_min = 0.05
-        self.epsilon_decay = 0.995
-        self.learning_rate = 0.001
+        if len(amount_nodes_layer) != amount_layers:
+            raise ValueError("length of tuple of amount of nodes per layer "
+                             "should be equal to "
+                             "the amount of required layers")
+
+        self.num_layers = amount_layers
+        self.num_nodes = amount_nodes_layer
+
+        # memory for updating
+        self.memory = deque(maxlen=memory_size)
+
+        # exploration
+        self.epsilon = epsilon_start
+        self.epsilon_min = epsilon_finish
+        self.epsilon_decay_per_step = (epsilon_start - epsilon_finish) / epsilon_decay_steps
+
+        # parameters for updating model
+        self.lr = learning_rate
+        self.dr = discount_rate
+
+    def _update_epsilon(self):
+        if self.epsilon > self.epsilon_min:
+            self.epsilon -= self.epsilon_decay_per_step
+
+    def remember(self, state, action, reward, next_state, done):
+        raise NotImplementedError
+
+    def act(self, state, use_random_chance=True):
+        raise NotImplementedError()
+
+    def replay(self, batch_size):
+        raise NotImplementedError()
+
+
+# Deep Q-learning Agent
+class DQNAgent(Agent):
+
+    def __init__(self, state_size: int,
+                 action_size: int,
+                 memory_size: int,
+                 epsilon_start: float,
+                 epsilon_finish: float,
+                 epsilon_decay_steps: int,
+                 discount_rate: float,
+                 learning_rate: float,
+                 amount_layers: int,
+                 amount_nodes_layer: tuple):
+
+        super().__init__(state_size,
+                         action_size,
+                         memory_size,
+                         epsilon_start,
+                         epsilon_finish,
+                         epsilon_decay_steps,
+                         discount_rate,
+                         learning_rate,
+                         amount_layers,
+                         amount_nodes_layer)
 
         self.model = self._build_model()
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        model.add(Dense(320, input_dim=self.state_size, activation='relu', kernel_regularizer=l1(1)))
-        model.add(Dense(320, activation='relu', kernel_regularizer=l1(1)))
-        model.add(Dense(320, activation='relu', kernel_regularizer=l1(1)))
+        model.add(Dense(self.num_nodes[0], input_dim=self.state_size,
+                        activation='relu', kernel_regularizer=l1(1)))
+
+        for i in range(1, self.num_layers):
+            model.add(Dense(self.num_nodes[i], activation='relu',
+                            kernel_regularizer=l1(1)))
+
         model.add(Dense(self.action_size, activation='softmax'))
-        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        model.compile(loss='mse', optimizer=Adam(lr=self.lr))
 
         return model
 
@@ -62,7 +128,6 @@ class DQNAgent:
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
-        #self.long_memory.append((state, action, reward, next_state, done))
 
     def act(self, state, use_random_chance=True):
         if use_random_chance and np.random.rand() <= self.epsilon:
@@ -85,7 +150,7 @@ class DQNAgent:
             target = reward
 
             if not done:
-              target = reward + self.gamma * \
+              target = reward + self.dr * \
                        np.amax(self.model.predict(next_state.reshape(1, self.state_size)))
 
             target_f = self.model.predict(state.reshape(1, self.state_size))
@@ -93,8 +158,7 @@ class DQNAgent:
             target_f[0][action] = target
             self.model.fit(state.reshape(1, self.state_size), target_f, epochs=1, verbose=0)
 
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+        self._update_epsilon()
 
 
 def test():

@@ -27,7 +27,8 @@ np.set_printoptions(suppress=True)
 ################################################################################
 # discrete action space for robot env
 
-class ActionMap:
+
+class DiscreteActionMap:
 
     def __init__(self, possible_actions):
         idx = 0
@@ -38,9 +39,6 @@ class ActionMap:
                 #print("init ({}, {}), with index {}".format(possible_actions[i], possible_actions[j], idx))
                 self.actions[idx] = (possible_actions[i], possible_actions[j])
                 idx += 1
-
-        for a in self.actions:
-            print(a)
 
     def get(self, index):
         return self.actions[index]
@@ -55,10 +53,11 @@ class ActionMap:
 
         raise ValueError("Could not get index of action")
 
-class DiscreteAction(Discrete):
+
+class RelativeDiscreteActionMap(Discrete, DiscreteActionMap):
 
     def __init__(self, n, lower, upper, stepsize):
-        super(DiscreteAction, self).__init__(n)
+        super(RelativeDiscreteActionMap, self).__init__(n)
         self.actions = [0 for _ in range(0, n)]
 
         idx = 0
@@ -81,7 +80,46 @@ class DiscreteAction(Discrete):
                 idx += 1
 
     def sample(self):
-        return self.actions[super(DiscreteAction, self).sample()]
+        return self.actions[super(RelativeDiscreteActionMap, self).sample()]
+
+
+class AbsoluteDiscreteActionMap:
+
+    def __init__(self, min, max, steps):
+        self.min = min
+        self.max = max
+        self.steps = steps
+
+        delta = (max - min) / (steps-1)
+
+        self.actions = []
+        for i in range(steps):
+            lower_pos = min + (i * delta)
+            for j in range(steps):
+                upper_pos = min + (j * delta)
+                self.actions.append([int(lower_pos), int(upper_pos)])
+
+    def get(self, index):
+        return self.actions[index]
+
+    def getIndex(self, action):
+        idx = 0
+        for a in self.actions:
+            if action == a:
+                return idx
+            else:
+                idx += 1
+
+    def to_json_object(self):
+        obj = {}
+
+        obj['description_in_words_for_simon'] = "absolute_shit_brah"
+        obj['min_action'] = self.min
+        obj['max_action'] = self.max
+        obj['steps'] = self.steps
+        obj['possible_actions'] = self.actions
+
+        return obj
 
 
 ################################################################################
@@ -113,7 +151,7 @@ class RobotArm(gym.Env):
     # The action space defines all possible actions which can be taken during
     # one episode of the task.
     action_space_dim = 169
-    action_map = DiscreteAction(action_space_dim, -30, 31, 5)
+    action_map = RelativeDiscreteActionMap(action_space_dim, -30, 31, 5)
     action_space = Discrete(action_space_dim)
 
     # The observation space defines all possible states the environment can
@@ -492,7 +530,7 @@ class RobotArmSwingUp(gym.Env):
     # The action space defines all possible actions which can be taken during
     # one episode of the task.
     action_space_dim = 25
-    action_map = DiscreteAction(action_space_dim, 50, 131, 20)
+    action_map = RelativeDiscreteActionMap(action_space_dim, 50, 131, 20)
     action_space = Discrete(action_space_dim)
 
     # The observation space defines all possible states the environment can

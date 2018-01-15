@@ -1,1 +1,2 @@
-from .RobotArmInvPendulum import RobotArm, DiscreteAction, ActionMap, RobotArmSwingUp
+from .RobotArmInvPendulum import RobotArm, DiscreteActionMap, \
+    RelativeDiscreteActionMap, RobotArmSwingUp, AbsoluteDiscreteActionMap
