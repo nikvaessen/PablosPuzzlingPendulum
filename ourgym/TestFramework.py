@@ -1,15 +1,79 @@
 import sys
 import os
-
-# print(sys.path)
-# sys.path.append(os.path.pardir(__file__))
-# print(sys.path)
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import gym
 import time
 import json
+import random
+import uuid
 
+
+class TestVariableCreator:
+
+    def __init__(self,
+                 num_episodes: int,
+                 num_steps: int,
+                 batchsize_options: list,
+                 state_size: int,
+                 action_size: int,
+                 memory_size_options: list,
+                 epsilon_start_options: list,
+                 epsilon_finish_options: list,
+                 epsilon_decay_steps_options: list,
+                 discount_rate_options: list,
+                 learning_rate_options: list,
+                 amount_layers_options: list,
+                 amount_nodes_layer_options: list):
+
+        # running the agent
+        self.num_episodes = num_episodes
+        self.num_steps = num_steps
+        self.batchsize_options = batchsize_options
+
+        # model size
+        self.state_size = state_size
+        self.action_size = action_size
+
+        self.amount_layers = amount_layers_options
+        self.amount_nodes_layer = amount_nodes_layer_options
+
+        # memory for updating
+        self.memory_size = memory_size_options
+
+        # exploration
+        self.epsilon_start = epsilon_start_options
+        self.epsilon_min = epsilon_finish_options
+        self.epsilon_decay_per_step = epsilon_decay_steps_options
+
+        # parameters for updating model
+        self.lr = learning_rate_options
+        self.dr = discount_rate_options
+
+    def poll(self):
+        amount_of_layers = self.get_random_item(self.amount_layers)
+        amount_of_nodes = self.get_random_item(self.amount_nodes_layer)
+        amount_of_nodes_list = [amount_of_nodes for _ in range(amount_of_layers)]
+
+        return TestVariables(
+            self.num_episodes,
+            self.num_steps,
+            self.get_random_item(self.batchsize_options),
+            self.state_size,
+            self.action_size,
+            self.get_random_item(self.memory_size),
+            self.get_random_item(self.epsilon_start),
+            self.get_random_item(self.epsilon_min),
+            self.get_random_item(self.epsilon_decay_per_step),
+            self.get_random_item(self.dr),
+            self.get_random_item(self.lr),
+            amount_of_layers,
+            amount_of_nodes_list
+        )
+
+    @staticmethod
+    def get_random_item(items):
+        return items[random.randint(0, len(items) - 1)]
 
 class TestVariables:
 
@@ -141,7 +205,7 @@ def run(env: gym.Env,
 
 
 def save_info(parameters_json, action_map_json, reward_history_list, action_history_list):
-    with open("{}.json".format(time.time()), 'w') as fp:
+    with open("~/experiments/{}-{}.json".format(time.time(), uuid.uuid4()), 'w') as fp:
         object = {}
 
         object['parameters'] = parameters_json
@@ -158,14 +222,41 @@ if __name__ == '__main__':
 
     env = RobotArmEnvironment()
     agent_constructor = DQNAgent
+
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
-    tv = TestVariables(510, 209, 10, state_dim, action_dim,
-                       1000, 0.9, 0.1, 100, 0.99, 0.0001, 2, (1000, 2000))
-    # agent = tv.create_agent(DQNAgent)
-    tv.run_experiment(env, agent_constructor)
+    num_episodes = 510
+    num_steps = 200
+    memory_size = [100, 200, 400, 600, 800, 1000]
+    batch_size = [20, 50, 100, 200]
+    e_start = [1, 0.5]
+    e_finish = [0.05, 0.01]
+    e_decay = [50, 250, 500]
+    dr = [0.9999, 0.99, 0.9]
+    lr = [0.1, 0.01, 0.0001, 0.00001]
+    layers = [1, 2]
+    nodes = [10, 20, 50, 100]
 
-    # rh, ah = run(env, agent, 10, 200, 200)
+
+    creator = TestVariableCreator(
+        num_episodes,
+        num_steps,
+        batch_size,
+        state_dim,
+        action_dim,
+        memory_size,
+        e_start,
+        e_finish,
+        e_decay,
+        dr,
+        lr,
+        layers,
+        nodes
+    )
+
+    while True:
+        creator.poll().run_experiment(env, agent_constructor)
+
 
 
