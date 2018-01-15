@@ -151,6 +151,7 @@ def save_info(parameters_json, action_map_json, reward_history_list, action_hist
         json.dump(object, fp)
 
 
+
 if __name__ == '__main__':
     from rl import DQNAgent
     from simulation import RobotArmEnvironment
@@ -161,7 +162,7 @@ if __name__ == '__main__':
     action_dim = env.action_space.n
 
     tv = TestVariables(510, 209, 10, state_dim, action_dim,
-                       1000, 0.9, 0.1, 100, 0.99, 0.0001, 2, (10, 20))
+                       1000, 0.9, 0.1, 100, 0.99, 0.0001, 2, (1000, 2000))
     # agent = tv.create_agent(DQNAgent)
     tv.run_experiment(env, agent_constructor)
 
