@@ -1,2 +1,5 @@
-source .env/bin/activate
-python3 ourgym/TestFramework.py
+#! /bin/bash
+# source .env/bin/activate
+tmux new-session -d -s project_experiments
+tmux send -t project_experiments "source .env/bin/activate" ENTER
+tmux send -t project_experiments "python3 ourgym/TestFramework.py" ENTER
