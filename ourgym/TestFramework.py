@@ -7,7 +7,8 @@ import time
 import json
 import random
 import uuid
-
+import errno
+import multiprocessing
 
 class TestVariableCreator:
 
@@ -205,7 +206,16 @@ def run(env: gym.Env,
 
 
 def save_info(parameters_json, action_map_json, reward_history_list, action_history_list):
-    with open("~/experiments/{}-{}.json".format(time.time(), uuid.uuid4()), 'w') as fp:
+    filename = "../experiments/{}-{}.json".format(time.time(), uuid.uuid4())
+
+    if not os.path.exists(os.path.dirname(filename)):
+        try:
+            os.makedirs(os.path.dirname(filename))
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
+
+    with open(filename, 'w') as fp:
         object = {}
 
         object['parameters'] = parameters_json
@@ -213,10 +223,10 @@ def save_info(parameters_json, action_map_json, reward_history_list, action_hist
         object['rewards'] = reward_history_list
         object['actions'] = action_history_list
         json.dump(object, fp)
+        print("written json file to {}".format(fp.name))
 
 
-
-if __name__ == '__main__':
+def run_experiments():
     from rl import DQNAgent
     from simulation import RobotArmEnvironment
 
@@ -238,7 +248,6 @@ if __name__ == '__main__':
     layers = [1, 2]
     nodes = [10, 20, 50, 100]
 
-
     creator = TestVariableCreator(
         num_episodes,
         num_steps,
@@ -259,4 +268,8 @@ if __name__ == '__main__':
         creator.poll().run_experiment(env, agent_constructor)
 
 
-
+if __name__ == '__main__':
+    for i in range(multiprocessing.cpu_count()):
+        p = multiprocessing.Process(target=run_experiments)
+        print("starting process {}".format(i))
+        p.start()
