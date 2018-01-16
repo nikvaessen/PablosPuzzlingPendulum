@@ -243,10 +243,8 @@ def run_experiments():
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
-    #num_episodes = [500, 1000, 2000, 4000]
-    #num_steps = [50, 100, 200]
-    num_episodes = [10]
-    num_steps = [1]
+    num_episodes = [500, 1000, 2000, 4000]
+    num_steps = [50, 100, 200]
     memory_size = [100, 200, 400, 600, 800, 1000]
     batch_size = [0.05, 0.10, 0.25, 0.50, 1]
     e_start = [1, 0.5]
@@ -278,7 +276,7 @@ def run_experiments():
 
 
 if __name__ == '__main__':
-    #for i in range(multiprocessing.cpu_count()):
+    for i in range(multiprocessing.cpu_count()):
         p = multiprocessing.Process(target=run_experiments)
-       # print("starting process {}".format(i))
+        print("starting process {}".format(i))
         p.start()
