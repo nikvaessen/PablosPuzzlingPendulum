@@ -10,6 +10,8 @@ import uuid
 import errno
 import multiprocessing
 
+from queue import deque
+
 class TestVariableCreator:
 
     def __init__(self,
@@ -60,7 +62,6 @@ class TestVariableCreator:
         memory_size = self.get_random_item(self.memory_size)
 
         e_decay = self.get_random_item(self.epsilon_decay_per_step)
-        print(e_decay, num_episodes, int(e_decay*num_episodes))
 
         return TestVariables(
             num_episodes,
@@ -173,14 +174,15 @@ def run(env: gym.Env,
 
     reward_history_per_episode = []
     action_history_per_episode = []
+    rewards = deque(maxlen=20)
 
     for episode_idx in range(num_episodes):
-        print("episode {:3}/{:3}, reward ".format(episode_idx, num_episodes), end = "", flush=True)
+        print("{}: episode {:3}/{:3}".format(os.getpid(), episode_idx, num_episodes))
         state = env.reset()
         reward_history_per_episode.append(list())
         action_history_per_episode.append(list())
 
-        ct = time.time()
+
         for step_idx in range(max_num_steps):
             #env.render()
             #time.sleep(1/20)
@@ -192,21 +194,17 @@ def run(env: gym.Env,
             # observe effect of action and remember
             new_state, reward, done, info = env.step(action)
             agent.remember(state, action, reward, new_state, done)
-            reward_history_per_episode[episode_idx].append(int(reward))
-
+            reward_history_per_episode[episode_idx].append(float(reward))
             # store new state
             state = new_state
 
         agent.replay(batchsize)
 
-        average_reward = 0
-        count = 0
-        for r in reward_history_per_episode[episode_idx]:
-            average_reward += r
-            count += 1
-
-        print("{:5f}, epsilon {:5f}, ms {}".format(float(average_reward/count), agent.epsilon,
-                                                   time.time() - ct))
+        # check if last 20 episodes have had a reward of 0
+        s = sum(reward_history_per_episode[episode_idx])
+        rewards.append(s)
+        if len(rewards) == 20 and sum(rewards) == 0:
+            break
 
     return reward_history_per_episode, action_history_per_episode
 
@@ -230,7 +228,7 @@ def save_info(parameters_json, action_map_json, reward_history_list, action_hist
         object['actions'] = action_history_list
         object['environment'] = env_json
         json.dump(object, fp)
-        print("written json file to {}".format(fp.name))
+        print("{}: written json file to {}".format(os.getpid(), fp.name))
 
 
 def run_experiments():
@@ -272,11 +270,14 @@ def run_experiments():
     )
 
     while True:
-        creator.poll().run_experiment(env, agent_constructor)
-
+        try:
+            creator.poll().run_experiment(env, agent_constructor)
+        except KeyboardInterrupt as e:
+            break
 
 if __name__ == '__main__':
     for i in range(multiprocessing.cpu_count()):
         p = multiprocessing.Process(target=run_experiments)
-        print("starting process {}".format(i))
+        print("starting process {} with pid {}".format(i, os.getpid()))
         p.start()
+    print("process {} quited".format(os.getpid()))
