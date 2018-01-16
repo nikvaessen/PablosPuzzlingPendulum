@@ -286,7 +286,7 @@ class RobotArmEnvironment(gym.Env):
                  g=9.81,  # gravity
                  sim_ticks_per_step=10,
                  reward_function_index=0,
-                 reward_function_params=(1/6 * pi, 2 * pi, 10),
+                 reward_function_params=(1/6 * pi, 2 * pi, 1, 1),
                  from_json_object=None
                  ):
         super(RobotArmEnvironment, self).__init__()
@@ -500,7 +500,7 @@ class RobotArmEnvironment(gym.Env):
         if index == 0:
             def reward_function(state):
                 if abs(state[0] - pi) <= parameters[0] and abs(state[1]) <= parameters[1]:
-                    return np.e ** -abs(state[1]) * parameters[2]
+                    return np.e ** -(parameters[2] * abs(state[1])) * parameters[3]
                 else:
                     return 0
             return reward_function

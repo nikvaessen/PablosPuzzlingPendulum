@@ -13,8 +13,8 @@ import multiprocessing
 class TestVariableCreator:
 
     def __init__(self,
-                 num_episodes: int,
-                 num_steps: int,
+                 num_episodes_options: list,
+                 num_steps_options: list,
                  batchsize_options: list,
                  state_size: int,
                  action_size: int,
@@ -28,8 +28,8 @@ class TestVariableCreator:
                  amount_nodes_layer_options: list):
 
         # running the agent
-        self.num_episodes = num_episodes
-        self.num_steps = num_steps
+        self.num_episodes = num_episodes_options
+        self.num_steps = num_steps_options
         self.batchsize_options = batchsize_options
 
         # model size
@@ -53,19 +53,25 @@ class TestVariableCreator:
 
     def poll(self):
         amount_of_layers = self.get_random_item(self.amount_layers)
-        amount_of_nodes = self.get_random_item(self.amount_nodes_layer)
-        amount_of_nodes_list = [amount_of_nodes for _ in range(amount_of_layers)]
+        amount_of_nodes_list = [self.get_random_item(self.amount_nodes_layer)
+                                for _ in range(amount_of_layers)]
+
+        num_episodes = self.get_random_item(self.num_episodes)
+        memory_size = self.get_random_item(self.memory_size)
+
+        e_decay = self.get_random_item(self.epsilon_decay_per_step)
+        print(e_decay, num_episodes, int(e_decay*num_episodes))
 
         return TestVariables(
-            self.num_episodes,
-            self.num_steps,
-            self.get_random_item(self.batchsize_options),
+            num_episodes,
+            self.get_random_item(self.num_steps),
+            int(self.get_random_item(self.batchsize_options) * memory_size),
             self.state_size,
             self.action_size,
-            self.get_random_item(self.memory_size),
+            memory_size,
             self.get_random_item(self.epsilon_start),
             self.get_random_item(self.epsilon_min),
-            self.get_random_item(self.epsilon_decay_per_step),
+            int(e_decay * num_episodes),
             self.get_random_item(self.dr),
             self.get_random_item(self.lr),
             amount_of_layers,
@@ -91,7 +97,7 @@ class TestVariables:
                  discount_rate: float,
                  learning_rate: float,
                  amount_layers: int,
-                 amount_nodes_layer: tuple):
+                 amount_nodes_layer: list):
         # running the agent
         self.num_episodes = num_episodes
         self.num_steps = num_steps
@@ -150,7 +156,7 @@ class TestVariables:
         obj['memory_size'] = self.memory_size
         obj['epsilon_start'] = self.epsilon_start
         obj['epsilon_min'] = self.epsilon_min
-        obj['epsilon_decay_per_step'] = self.epsilon_decay_per_step
+        obj['epsilon_decay_episodes_required'] = self.epsilon_decay_per_step
         obj['learning_rate'] = self.lr
         obj['discount_rate'] = self.dr
         obj['amount_layers'] = self.amount_layers
@@ -237,17 +243,19 @@ def run_experiments():
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
-    num_episodes = 510
-    num_steps = 200
+    #num_episodes = [500, 1000, 2000, 4000]
+    #num_steps = [50, 100, 200]
+    num_episodes = [10]
+    num_steps = [1]
     memory_size = [100, 200, 400, 600, 800, 1000]
-    batch_size = [20, 50, 100, 200]
+    batch_size = [0.05, 0.10, 0.25, 0.50, 1]
     e_start = [1, 0.5]
     e_finish = [0.05, 0.01]
-    e_decay = [50, 250, 500]
-    dr = [0.9999, 0.99, 0.9]
-    lr = [0.1, 0.01, 0.0001, 0.00001]
-    layers = [1, 2]
-    nodes = [10, 20, 50, 100]
+    e_decay = [0.1, 0.5, 0.9]
+    dr = [0.9999, 0.999, 0.99, 0.9]
+    lr = [0.1, 0.01, 0.001, 0.0001, 0.00001]
+    layers = [1, 2, 3]
+    nodes = [10, 20, 50, 100, 200]
 
     creator = TestVariableCreator(
         num_episodes,
@@ -270,7 +278,7 @@ def run_experiments():
 
 
 if __name__ == '__main__':
-    for i in range(multiprocessing.cpu_count()):
+    #for i in range(multiprocessing.cpu_count()):
         p = multiprocessing.Process(target=run_experiments)
-        print("starting process {}".format(i))
+       # print("starting process {}".format(i))
         p.start()
