@@ -137,7 +137,7 @@ class TestVariables:
         rh , ah = run(env, self.create_agent(agent_constructor),
                       self.num_episodes, self.num_steps, self.batchsize)
 
-        save_info(self.to_json_object(), env.action_map.to_json_object(), rh, ah)
+        save_info(self.to_json_object(), env.action_map.to_json_object(), rh, ah, env.to_json_object())
 
     def to_json_object(self):
         obj = {}
@@ -205,7 +205,7 @@ def run(env: gym.Env,
     return reward_history_per_episode, action_history_per_episode
 
 
-def save_info(parameters_json, action_map_json, reward_history_list, action_history_list):
+def save_info(parameters_json, action_map_json, reward_history_list, action_history_list, env_json):
     filename = "../experiments/{}-{}.json".format(time.time(), uuid.uuid4())
 
     if not os.path.exists(os.path.dirname(filename)):
@@ -222,6 +222,7 @@ def save_info(parameters_json, action_map_json, reward_history_list, action_hist
         object['action_map'] = action_map_json
         object['rewards'] = reward_history_list
         object['actions'] = action_history_list
+        object['environment'] = env_json
         json.dump(object, fp)
         print("written json file to {}".format(fp.name))
 

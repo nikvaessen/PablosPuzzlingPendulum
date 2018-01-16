@@ -283,7 +283,11 @@ class RobotArmEnvironment(gym.Env):
                  L_1=0.12,  # lower segment length
                  L_2=0.03,  # upper segment length
                  b=0.0005,  # damping on pendulum axis
-                 g=9.81  # gravity
+                 g=9.81,  # gravity
+                 sim_ticks_per_step=10,
+                 reward_function_index=0,
+                 reward_function_params=(1/6 * pi, 2 * pi, 10),
+                 from_json_object=None
                  ):
         super(RobotArmEnvironment, self).__init__()
 
@@ -294,10 +298,35 @@ class RobotArmEnvironment(gym.Env):
         self.pendulum_trans = None
         self.scaling_factor = 1000
 
-        # pendulum simulation stuff
-        self.params = (M_P, L_P, L_1, L_2, b, g)
-        self.simulation = RobotArmSimulatorSerial(self.params)
-        self.simulation.start()
+        if not from_json_object:
+            # reward function stuff
+            self.reward_function_index = reward_function_index
+            self.reward_function_params = reward_function_params
+            self.reward_function = self.__get_reward_function(self.reward_function_index, self.reward_function_params)
+
+            # pendulum simulation stuff
+            self.params = (M_P, L_P, L_1, L_2, b, g)
+            self.sim_ticks_per_step = sim_ticks_per_step
+            self.simulation = RobotArmSimulatorSerial(self.params)
+            self.simulation.start()
+        else:
+            # reward function stuff
+            self.reward_function_index = from_json_object['reward_function']['index']
+            self.reward_function_params = from_json_object['reward_function']['parameters']
+            self.reward_function = self.__get_reward_function(self.reward_function_index, self.reward_function_params)
+
+            # pendulum simulation stuff
+            self.params = from_json_object['physical_parameters']
+            self.sim_ticks_per_step = from_json_object['sim_ticks_per_step']
+            self.simulation = RobotArmSimulatorSerial(self.params)
+            self.simulation.interval = from_json_object['sim_interval']
+            self.simulation.threshold = from_json_object['sim_threshold']
+            self.simulation.max_acceleration = from_json_object['sim_max_acceleration']
+            self.simulation.kp = from_json_object['sim_kp']
+            self.simulation.ka = from_json_object['sim_ka']
+            self.simulation.acceleration_control = from_json_object['sim_acceleration_control']
+            self.simulation.acceleration_limit = from_json_object['sim_acceleration_limit']
+            self.simulation.start()
 
     def __enter__(self):
         return self
@@ -340,7 +369,7 @@ class RobotArmEnvironment(gym.Env):
 
         while True:
             time.sleep(something_small)
-            if self.simulation.get_counter() >= 10:
+            if self.simulation.get_counter() >= self.sim_ticks_per_step:
                 break
 
         # TODO: replace this with advance(3)?
@@ -458,13 +487,30 @@ class RobotArmEnvironment(gym.Env):
     # Other methods
     ################################################################################
 
-    @staticmethod
-    def __reward(state):
-        if abs(state[0] - pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
-            return np.e ** -abs(state[1]) * 10
-        else:
-            return 0
+    def __reward(self, state):
+        return self.reward_function(state)
+        # if abs(state[0] - pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
+        #     return np.e ** -abs(state[1]) * 10
+        # else:
+        #     return 0
         # return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
+
+    @staticmethod
+    def __get_reward_function(index, parameters):
+        if index == 0:
+            def reward_function(state):
+                if abs(state[0] - pi) <= parameters[0] and abs(state[1]) <= parameters[1]:
+                    return np.e ** -abs(state[1]) * parameters[2]
+                else:
+                    return 0
+            return reward_function
+        elif index == 1:
+            def reward_function(state):
+                if abs(state[0] - pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
+                    return np.e ** -abs(state[1]) * 10
+                else:
+                    return 0
+            return reward_function
 
     @staticmethod
     def __convert_action(realworld_action):
@@ -497,3 +543,21 @@ class RobotArmEnvironment(gym.Env):
         state[4] = (state[4] - pi) / pi
         state[5] = (state[5] - pi) / (4 * pi)
         return state
+
+    def to_json_object(self):
+        obj = {}
+        obj['description'] = "simulation"
+        obj['physical_parameters'] = self.params
+        obj['sim_ticks_per_step'] = self.sim_ticks_per_step
+        obj['sim_interval'] = self.simulation.interval
+        obj['sim_threshold'] = self.simulation.threshold
+        obj['sim_max_acceleration'] = self.simulation.max_acceleration
+        obj['sim_kp'] = self.simulation.kp
+        obj['sim_ka'] = self.simulation.ka
+        obj['sim_acceleration_control'] = self.simulation.acceleration_control
+        obj['sim_acceleration_limit'] = self.simulation.acceleration_limit
+        obj['reward_function'] = {
+            'index': self.reward_function_index,
+            'parameters': self.reward_function_params
+        }
+        return obj

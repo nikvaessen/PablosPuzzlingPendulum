@@ -47,7 +47,7 @@ void loop() {
         int token = Serial.read();
 
         if (READ_POTENTIOMETERS_TOKEN == token) {
-            pendulum_reading = adjust_for_deadzone(analogRead(POTENTIOMETER_PENDULUM));
+            pendulum_reading = analogRead(POTENTIOMETER_PENDULUM);
             lower_joint_reading = analogRead(POTENTIOMETER_LOWER_JOINT);
             upper_joint_reading = analogRead(POTENTIOMETER_UPPER_JOINT);
             readings[0] = pendulum_reading / 256;
