@@ -500,16 +500,16 @@ class RobotArmEnvironment(gym.Env):
         if index == 0:
             def reward_function(state):
                 if abs(state[0] - pi) <= parameters[0] and abs(state[1]) <= parameters[1]:
-                    return np.e ** -(parameters[2] * abs(state[1])) * parameters[3]
+                    return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
                     return 0
             return reward_function
         elif index == 1:
             def reward_function(state):
                 if abs(state[0] - pi) <= 1 / 6 * pi and abs(state[1]) <= 2 * pi:
-                    return np.e ** -abs(state[1]) * 10
+                    return (np.e ** -(1 * abs(state[1]))) * 10
                 else:
-                    return 0
+                    return -(0.1 * (abs(state[0]) ** 2) + 0.001 * (abs(state[1]) ** 1))
             return reward_function
 
     @staticmethod
