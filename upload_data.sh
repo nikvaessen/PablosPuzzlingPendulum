@@ -1,16 +1,7 @@
 #! /bin/bash
-cd $HOME
-if [ ! -d "$HOME/SimonsSignificantStatistics" ]; then
-    git clone https://github.com/swengeler/SimonsSignificantStatistics.git
-fi
-cd $HOME/SimonsSignificantStatistics
-git pull
-if [ ! -d "$HOME/SimonsSignificantStatistics/data" ]; then
-    mkdir $HOME/SimonsSignificantStatistics/data
-fi
-cd $HOME/SimonsSignificantStatistics/data
-mv -n $HOME/experiments/*.json $HOME/SimonsSignificantStatistics/data/
-git add -A
-git commit -m "Data from experiments run by $USER at $(date '+%d/%m/%Y %H:%M:%S')"
-git push
-
+# might be better to check somehow if files exist already
+# if [ ! -d $HOME/backup ]; then
+# 	mkdir $HOME/backup
+# fi
+# cp $HOME/experiments/*.json $HOME/backup/
+gdcp upload $HOME/experiments/*.json -p 1sE6YuKf4quVl_T6sZqadzq4qBNycY2Ip

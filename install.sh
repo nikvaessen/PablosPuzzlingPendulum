@@ -2,6 +2,7 @@
 # installing packages
 sudo apt install -y python3-pip python3-tk tmux python-pip
 sudo /usr/bin/easy_install3 virtualenv
+pip2 install pydrive backoff
 
 # creating python virtualenv
 virtualenv .env -p python3
@@ -12,6 +13,6 @@ deactivate
 # installing gdcp
 git clone https://github.com/ctberthiaume/gdcp.git $HOME/gdcp
 sudo cp $HOME/gdcp/gdcp /usr/local/bin
-cp $HOME/PablosPuzzlingPendulum/.gdcp/ $HOME
+cp -r $HOME/PablosPuzzlingPendulum/.gdcp/ $HOME
 
 
