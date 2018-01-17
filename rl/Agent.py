@@ -53,7 +53,9 @@ class Agent:
 
     def _update_epsilon(self):
         if self.epsilon > self.epsilon_min:
+            print(self.epsilon, self.epsilon_decay_per_step, flush=False, end="")
             self.epsilon -= self.epsilon_decay_per_step
+            print(self.epsilon, flush=True)
 
     def remember(self, state, action, reward, next_state, done):
         raise NotImplementedError
