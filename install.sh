@@ -14,5 +14,6 @@ deactivate
 git clone https://github.com/ctberthiaume/gdcp.git $HOME/gdcp
 sudo cp $HOME/gdcp/gdcp /usr/local/bin
 cp -r $HOME/PablosPuzzlingPendulum/.gdcp/ $HOME
+sed -i -e "s/USER_NAME/$USER/g" $HOME/.gdcp/settings.yaml
 
 
