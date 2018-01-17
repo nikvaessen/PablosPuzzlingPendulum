@@ -1,6 +1,6 @@
 #! /bin/bash
 # installing packages
-sudo apt install -y python3-pip python3-tk tmux python-pip
+sudo apt install -y python3-pip python3-tk tmux python-pip zip
 sudo /usr/bin/easy_install3 virtualenv
 pip2 install pydrive backoff
 
