@@ -1,11 +1,15 @@
 #! /bin/bash
-if [ -v 1 ] && [ $1 == -b ] && [ ! -d $HOME/backup ]; then
+if [ ! -d $HOME/backup ]; then
 	mkdir $HOME/backup
 fi
-for file in $HOME/experiments/*.json; do
-    if [ -v 1 ] && [ $1 == -b ]; then
-        cp $file $HOME/backup
-    fi
-    gdcp upload $file -p 1sE6YuKf4quVl_T6sZqadzq4qBNycY2Ip
-    rm -f $file
-done
+
+if [ ! -d /tmp/ftu ]; then
+	mkdir /tmp/ftu
+fi
+
+rm /tmp/ftu/*
+mv $HOME/experiments/* /tmp/ftu/
+cp /tmp/ftu/* $HOME/backup/
+zip -r -j /tmp/ftu/experiments_$(echo $USER)_$(date '+%d-%m-%Y_%H:%M:%S').zip /tmp/ftu/*
+gdcp upload /tmp/ftu/*.zip -p 10j6F0hFDuuNYzDAKw5GwoFOhAPEMqwxr
+rm /tmp/ftu/*
