@@ -1,6 +1,9 @@
 # intellij
 .idea/*
+
+# other stuff
 .env/*
+ourgym/backup/*
 
 # cython build folder
 communication/ccomm/build/*

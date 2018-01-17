@@ -1,16 +1,11 @@
 #! /bin/bash
-cd $HOME
-if [ ! -d "$HOME/SimonsSignificantStatistics" ]; then
-    git clone https://github.com/swengeler/SimonsSignificantStatistics.git
+if [ -v 1 ] && [ $1 == -b ] && [ ! -d $HOME/backup ]; then
+	mkdir $HOME/backup
 fi
-cd $HOME/SimonsSignificantStatistics
-git pull
-if [ ! -d "$HOME/SimonsSignificantStatistics/data" ]; then
-    mkdir $HOME/SimonsSignificantStatistics/data
-fi
-cd $HOME/SimonsSignificantStatistics/data
-mv -n $HOME/experiments/*.json $HOME/SimonsSignificantStatistics/data/
-git add -A
-git commit -m "Data from experiments run by $USER at $(date '+%d/%m/%Y %H:%M:%S')"
-git push
-
+for file in $HOME/experiments/*.json; do
+    if [ -v 1 ] && [ $1 == -b ]; then
+        cp $file $HOME/backup
+    fi
+    gdcp upload $file -p 1sE6YuKf4quVl_T6sZqadzq4qBNycY2Ip
+    rm -f $file
+done

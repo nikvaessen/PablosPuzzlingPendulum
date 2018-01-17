@@ -2,16 +2,16 @@ from simulation.robot_arm_simulation import RobotArmEnvironment
 from rl import DQNAgent
 from time import sleep, time
 
-number_of_episodes = 10000
-max_iterations_per_episode = 400
+number_of_episodes = 500
+max_iterations_per_episode = 300
 
 if __name__ == '__main__':
 
-    agent = DQNAgent(6, 25)
+    agent = DQNAgent(6, 25, 200, 1.0, 0.05, 500, 0.99, 0.01, 2, (10, 10))
     # agent.epsilon = 0.05
     # agent.load('backup/weights_1515613961.468759')
 
-    with RobotArmEnvironment() as env:
+    with RobotArmEnvironment(reward_function_index=1) as env:
 
         for episode_idx in range(number_of_episodes):
             state = env.reset()
@@ -28,7 +28,7 @@ if __name__ == '__main__':
             for i in range(max_iterations_per_episode):
                 # if (episode_idx+1) % 10 == 0 or episode_idx == 0:
                 env.render()
-                sleep(1 / 120)
+                # sleep(1 / 120)
 
                 ct_act = time()
                 action = agent.act(state)
