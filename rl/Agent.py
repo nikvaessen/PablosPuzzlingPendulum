@@ -97,6 +97,9 @@ class DQNAgent(Agent):
                          amount_nodes_layer)
 
         self.model = self._build_model()
+        self.fixed_model = self._build_model()
+        self.acts = 0
+        self.fix_frequency = 1000
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
@@ -112,6 +115,9 @@ class DQNAgent(Agent):
         model.compile(loss='mse', optimizer=Adam(lr=self.lr))
 
         return model
+
+    def fix_weights(self):
+        self.fixed_model.set_weights(self.model.get_weights())
 
     def safe(self):
         if not os.path.isdir("backup"):
@@ -137,6 +143,10 @@ class DQNAgent(Agent):
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state, use_random_chance=True):
+        self.acts += 0
+        if self.acts % self.fix_frequency == 0:
+            self.fix_weights()
+
         if use_random_chance and np.random.rand() <= self.epsilon:
             action = random.randrange(self.action_size)
             # print("Act randomly: {}".format(action))
@@ -164,7 +174,7 @@ class DQNAgent(Agent):
             next_states[idx, :] = next_state.reshape(1, 6)
 
         # calculate the expected reward
-        P = self.model.predict(next_states)
+        P = self.fixed_model.predict(next_states)
         for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
             target = P[idx]
             if done:
