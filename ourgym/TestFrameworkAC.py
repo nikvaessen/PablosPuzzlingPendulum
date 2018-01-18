@@ -239,7 +239,7 @@ def run_experiments():
 
 
 if __name__ == '__main__':
-    for i in range(1):
+    for i in range(multiprocessing.cpu_count()):
         p = multiprocessing.Process(target=run_experiments)
         print("starting process {} with pid {}".format(i, os.getpid()))
         p.start()
