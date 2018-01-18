@@ -3,3 +3,4 @@ keras
 serial
 matplotlib
 tensorflow
+h5py
