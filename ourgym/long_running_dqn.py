@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+
 from simulation.robot_arm_simulation import RobotArmEnvironment
 from rl import DQNAgent
 from time import time
@@ -5,9 +9,7 @@ from time import time
 import numpy as np
 
 import multiprocessing
-import os
 import errno
-import uuid
 import time
 import json
 
@@ -124,7 +126,7 @@ def run_experiments(reward_index):
 
             agent._update_epsilon()
 
-            if episode_idx % 1000 == 0 and episode_idx != 0:
+            if episode_idx % 100 == 0 and episode_idx != 0:
                 agent.safe()
                 save_info(episode_idx, reward_index,
                           parameters,
