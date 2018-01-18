@@ -203,6 +203,7 @@ def run(env: gym.Env,
 
             agent.replay(batchsize)
 
+        agent._update_epsilon()
         # check if last 20 episodes have had a reward of 0
         s = sum(reward_history_per_episode[episode_idx])
         rewards.append(s)

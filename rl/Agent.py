@@ -58,9 +58,7 @@ class Agent:
 
     def _update_epsilon(self):
         if self.epsilon > self.epsilon_min:
-            print(self.epsilon, self.epsilon_decay_per_step, flush=False, end="")
             self.epsilon -= self.epsilon_decay_per_step
-            print(self.epsilon, flush=True)
 
     def remember(self, state, action, reward, next_state, done):
         raise NotImplementedError
@@ -155,19 +153,28 @@ class DQNAgent(Agent):
 
         minibatch = random.sample(self.memory, batch_size) # + random.sample(self.long_memory, batch_size)
 
-        for state, action, reward, next_state, done in minibatch:
+        states = np.zeros((batch_size, self.state_size))
+        next_states = np.zeros((batch_size, self.state_size))
+        Y = np.zeros((batch_size, self.action_size))
+
+        # Create X and Y matrices for update
+        for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
             target = reward
+            states[idx, :] = state.reshape(1, 6)
+            next_states[idx, :] = next_state.reshape(1, 6)
 
-            if not done:
-              target = reward + self.dr * \
-                       np.amax(self.model.predict(next_state.reshape(1, self.state_size)))
+        # calculate the expected reward
+        P = self.model.predict(next_states)
+        for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
+            target = P[idx]
+            if done:
+                target[action] = reward
+            else:
+                target[action] = reward + self.dr * np.amax(P[idx])
 
-            target_f = self.model.predict(state.reshape(1, self.state_size))
+            Y[idx] = target
 
-            target_f[0][action] = target
-            self.model.fit(state.reshape(1, self.state_size), target_f, epochs=1, verbose=0)
-
-        self._update_epsilon()
+        self.model.fit(states, Y, epochs=1, verbose=0)
 
     def get_epsilon(self):
         return self.epsilon
