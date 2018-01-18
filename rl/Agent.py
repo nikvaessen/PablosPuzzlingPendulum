@@ -176,7 +176,7 @@ class DQNAgent(Agent):
             next_states[idx, :] = next_state.reshape(1, 6)
 
         # calculate the expected reward
-        P = self.should_fixate and self.fixed_model.predict(next_states) or \
+        P = self.fixed_model.predict(next_states) if self.should_fixate else \
             self.model.predict(next_states)
 
         for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
