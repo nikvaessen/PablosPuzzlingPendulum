@@ -83,7 +83,7 @@ def run_experiments(reward_index):
     parameters['frequency_update_target_model'] = frequency_updates
 
     agent = DQNAgent(6, 81,
-                     200,
+                     num_steps,
                      epsilon_start,
                      epsilon_min,
                      epsilon_decay_per_step,
