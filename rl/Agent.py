@@ -6,11 +6,16 @@ import time
 import os
 import matplotlib.pyplot as plt
 
+import tensorflow as tf
+
+from .advanced.AcAgent import PolicyGradientActorCritic
+
 from collections import deque
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.regularizers import l1
+
 
 
 class Agent:
@@ -70,7 +75,8 @@ class Agent:
 # Deep Q-learning Agent
 class DQNAgent(Agent):
 
-    def __init__(self, state_size: int,
+    def __init__(self,
+                 state_size: int,
                  action_size: int,
                  memory_size: int,
                  epsilon_start: float,
@@ -113,6 +119,7 @@ class DQNAgent(Agent):
         if not os.path.isdir("backup"):
             os.makedirs("backup")
         self.model.save_weights("backup/weights_" + str(time.time()))
+
 
     def plot_weights(self):
         f, axarr = plt.subplots(len(self.model.layers))
@@ -162,6 +169,100 @@ class DQNAgent(Agent):
 
         self._update_epsilon()
 
+    def get_epsilon(self):
+        return self.epsilon
+
+
+class ACAgent(Agent):
+
+    def __init__(self,
+                 state_size: int,
+                 action_size: int,
+                 epsilon_start: float,
+                 epsilon_finish: float,
+                 epsilon_decay_steps: int,
+                 discount_rate: float,
+                 learning_rate: float,
+                 amount_nodes_layer: int):
+
+        self.session = tf.Session()
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+
+        self.state_dim = state_size
+        self.action_size = action_size
+        self.num_actions = action_size
+
+        self.amount_nodes_layer = amount_nodes_layer
+
+        self.model = PolicyGradientActorCritic(self.session,
+                                               self.optimizer,
+                                               self._get_actor_network_function(),
+                                               self._get_critic_network_function(),
+                                               state_size,
+                                               action_size,
+                                               epsilon_start, epsilon_finish,
+                                               epsilon_decay_steps,
+                                               discount_rate,
+                                               )
+
+    def _get_actor_network_function(self):
+        state_dim = self.state_dim
+        action_size = self.action_size
+        amount_nodes = self.amount_nodes_layer
+
+        def actor(states):
+            # define policy neural network
+            W1 = tf.get_variable("W1", [state_dim, amount_nodes],
+                                 initializer=tf.random_normal_initializer())
+            b1 = tf.get_variable("b1", [amount_nodes],
+                                 initializer=tf.constant_initializer(0))
+            h1 = tf.nn.tanh(tf.matmul(states, W1) + b1)
+
+            W2 = tf.get_variable("W2", [amount_nodes, action_size],
+                                 initializer=tf.random_normal_initializer(stddev=0.1))
+            b2 = tf.get_variable("b2", [action_size],
+                                 initializer=tf.constant_initializer(0))
+            p = tf.matmul(h1, W2) + b2
+            return p
+
+        return actor
+
+    def _get_critic_network_function(self):
+        state_dim = self.state_dim
+
+        def critic(states):
+            # define policy neural network
+            W1 = tf.get_variable("W1", [state_dim, 20],
+                                 initializer=tf.random_normal_initializer())
+            b1 = tf.get_variable("b1", [20],
+                                 initializer=tf.constant_initializer(0))
+            h1 = tf.nn.tanh(tf.matmul(states, W1) + b1)
+            W2 = tf.get_variable("W2", [20, 1],
+                                 initializer=tf.random_normal_initializer())
+            b2 = tf.get_variable("b2", [1],
+                                 initializer=tf.constant_initializer(0))
+            v = tf.matmul(h1, W2) + b2
+            return v
+
+        return critic
+
+    def get_epsilon(self):
+        return self.model.exploration
+
+    def remember(self, state, action, reward, next_state, done):
+        self.model.storeRollout(state, action, reward)
+
+    def act(self, state, use_random_chance=True):
+        return self.model.sampleAction(state[np.newaxis, :])
+
+    def replay(self, batch_size):
+        self.model.updateModel()
+        pass
+
+    def safe(self):
+        saver = tf.train.Saver()
+        saver.save(self.session, "tf/backup/{}.ckpt".format(time.time()))
+        pass
 
 def test():
     state_size = 4

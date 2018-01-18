@@ -63,6 +63,7 @@ def critic_network(states):
   v = tf.matmul(h1, W2) + b2
   return v
 
+
 pg_reinforce = PolicyGradientActorCritic(sess,
                                          optimizer,
                                          actor_network,
@@ -94,7 +95,7 @@ for i_episode in range(MAX_EPISODES):
     total_rewards += reward
     #print(reward, t)
     # reward = 5.0 if done else -0.1
-    # pg_reinforce.storeRollout(state, action, reward)
+    pg_reinforce.storeRollout(state, action, reward)
 
     state = next_state
     if done: break

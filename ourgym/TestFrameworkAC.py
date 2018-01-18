@@ -9,40 +9,36 @@ import random
 import uuid
 import errno
 import multiprocessing
+import numpy as pi
 
 from queue import deque
+
 
 class TestVariableCreator:
 
     def __init__(self,
                  num_episodes_options: list,
                  num_steps_options: list,
-                 batchsize_options: list,
                  state_size: int,
                  action_size: int,
-                 memory_size_options: list,
                  epsilon_start_options: list,
                  epsilon_finish_options: list,
                  epsilon_decay_steps_options: list,
                  discount_rate_options: list,
                  learning_rate_options: list,
-                 amount_layers_options: list,
                  amount_nodes_layer_options: list):
 
         # running the agent
         self.num_episodes = num_episodes_options
         self.num_steps = num_steps_options
-        self.batchsize_options = batchsize_options
 
         # model size
         self.state_size = state_size
         self.action_size = action_size
 
-        self.amount_layers = amount_layers_options
         self.amount_nodes_layer = amount_nodes_layer_options
 
         # memory for updating
-        self.memory_size = memory_size_options
 
         # exploration
         self.epsilon_start = epsilon_start_options
@@ -54,70 +50,49 @@ class TestVariableCreator:
         self.dr = discount_rate_options
 
     def poll(self):
-        amount_of_layers = self.get_random_item(self.amount_layers)
-        amount_of_nodes_list = [self.get_random_item(self.amount_nodes_layer)
-                                for _ in range(amount_of_layers)]
-
         num_episodes = self.get_random_item(self.num_episodes)
-        memory_size = self.get_random_item(self.memory_size)
-
         e_decay = self.get_random_item(self.epsilon_decay_per_step)
 
         return TestVariables(
             num_episodes,
             self.get_random_item(self.num_steps),
-            int(self.get_random_item(self.batchsize_options) * memory_size),
             self.state_size,
             self.action_size,
-            memory_size,
             self.get_random_item(self.epsilon_start),
             self.get_random_item(self.epsilon_min),
             int(e_decay * num_episodes),
             self.get_random_item(self.dr),
             self.get_random_item(self.lr),
-            amount_of_layers,
-            amount_of_nodes_list
+            self.get_random_item(self.amount_nodes_layer)
         )
 
     @staticmethod
     def get_random_item(items):
         return items[random.randint(0, len(items) - 1)]
 
+
 class TestVariables:
 
     def __init__(self,
                  num_episodes: int,
                  num_steps: int,
-                 batchsize: int,
                  state_size: int,
                  action_size: int,
-                 memory_size: int,
                  epsilon_start: float,
                  epsilon_finish: float,
                  epsilon_decay_steps: int,
                  discount_rate: float,
                  learning_rate: float,
-                 amount_layers: int,
-                 amount_nodes_layer: list):
+                 amount_nodes_layer: int):
         # running the agent
         self.num_episodes = num_episodes
         self.num_steps = num_steps
-        self.batchsize = batchsize
 
         # model size
         self.state_size = state_size
         self.action_size = action_size
 
-        if len(amount_nodes_layer) != amount_layers:
-            raise ValueError("length of tuple of amount of nodes per layer "
-                             "should be equal to "
-                             "the amount of required layers")
-
-        self.amount_layers = amount_layers
         self.amount_nodes_layer = amount_nodes_layer
-
-        # memory for updating
-        self.memory_size = memory_size
 
         # exploration
         self.epsilon_start = epsilon_start
@@ -131,18 +106,16 @@ class TestVariables:
     def create_agent(self, agent_constructor):
         return agent_constructor(self.state_size,
                                  self.action_size,
-                                 self.memory_size,
                                  self.epsilon_start,
                                  self.epsilon_min,
                                  self.epsilon_decay_per_step,
                                  self.lr,
                                  self.dr,
-                                 self.amount_layers,
                                  self.amount_nodes_layer)
 
     def run_experiment(self, env, agent_constructor):
         rh , ah = run(env, self.create_agent(agent_constructor),
-                      self.num_episodes, self.num_steps, self.batchsize)
+                      self.num_episodes, self.num_steps)
 
         save_info(self.to_json_object(), env.action_map.to_json_object(), rh, ah, env.to_json_object())
 
@@ -151,16 +124,13 @@ class TestVariables:
 
         obj['num_episodes'] = self.num_episodes
         obj['num_steps'] = self.num_steps
-        obj['batchsize'] = self.batchsize
         obj['state_size'] = self.state_size
         obj['action_size'] = self.action_size
-        obj['memory_size'] = self.memory_size
         obj['epsilon_start'] = self.epsilon_start
         obj['epsilon_min'] = self.epsilon_min
         obj['epsilon_decay_episodes_required'] = self.epsilon_decay_per_step
         obj['learning_rate'] = self.lr
         obj['discount_rate'] = self.dr
-        obj['amount_layers'] = self.amount_layers
         obj['amount_nodes_layer'] = self.amount_nodes_layer
 
         return obj
@@ -169,8 +139,7 @@ class TestVariables:
 def run(env: gym.Env,
         agent,
         num_episodes: int,
-        max_num_steps: int,
-        batchsize: int):
+        max_num_steps: int):
 
     reward_history_per_episode = []
     action_history_per_episode = []
@@ -181,7 +150,6 @@ def run(env: gym.Env,
         state = env.reset()
         reward_history_per_episode.append(list())
         action_history_per_episode.append(list())
-
 
         for step_idx in range(max_num_steps):
             #env.render()
@@ -198,7 +166,7 @@ def run(env: gym.Env,
             # store new state
             state = new_state
 
-        agent.replay(batchsize)
+            agent.replay(None)
 
         # check if last 20 episodes have had a reward of 0
         s = sum(reward_history_per_episode[episode_idx])
@@ -232,40 +200,34 @@ def save_info(parameters_json, action_map_json, reward_history_list, action_hist
 
 
 def run_experiments():
-    from rl import DQNAgent
+    from rl import ACAgent
     from simulation import RobotArmEnvironment
 
     env = RobotArmEnvironment()
-    agent_constructor = DQNAgent
+    agent_constructor = ACAgent
 
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
     num_episodes = [500, 1000, 2000, 4000]
     num_steps = [50, 100, 200]
-    memory_size = [100, 200, 400, 600, 800, 1000]
-    batch_size = [0.05, 0.10, 0.25, 0.50, 1]
     e_start = [1, 0.5]
     e_finish = [0.05, 0.01]
     e_decay = [0.1, 0.5, 0.9]
     dr = [0.9999, 0.999, 0.99, 0.9]
     lr = [0.1, 0.01, 0.001, 0.0001, 0.00001]
-    layers = [1, 2, 3]
-    nodes = [10, 20, 50, 100, 200]
+    nodes = [10, 20, 50]
 
     creator = TestVariableCreator(
         num_episodes,
         num_steps,
-        batch_size,
         state_dim,
         action_dim,
-        memory_size,
         e_start,
         e_finish,
         e_decay,
         dr,
         lr,
-        layers,
         nodes
     )
 
@@ -275,8 +237,9 @@ def run_experiments():
         except KeyboardInterrupt as e:
             break
 
+
 if __name__ == '__main__':
-    for i in range(multiprocessing.cpu_count()):
+    for i in range(1):
         p = multiprocessing.Process(target=run_experiments)
         print("starting process {} with pid {}".format(i, os.getpid()))
         p.start()
