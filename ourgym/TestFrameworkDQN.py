@@ -70,7 +70,7 @@ class TestVariableCreator:
         return TestVariables(
             num_episodes,
             self.get_random_item(self.num_steps),
-            int(self.get_random_item(self.batchsize_options) * memory_size),
+            self.get_random_item(self.batchsize_options),
             self.state_size,
             self.action_size,
             memory_size,
@@ -246,48 +246,52 @@ def save_info(parameters_json, action_map_json, reward_history_list, action_hist
 def run_experiments():
     from rl import DQNAgent
     from simulation import RobotArmEnvironment
+    import numpy as np
 
-    env = RobotArmEnvironment()
-    agent_constructor = DQNAgent
+    reward_index = 1
 
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+    with RobotArmEnvironment(reward_function_index=reward_index,
+                             reward_function_params=(1 / 6 * np.pi, 2 * np.pi, 1, 10, 0.05, 0.1, 2, 0.001, 1)) as env:
+        agent_constructor = DQNAgent
 
-    num_episodes = [500, 1000, 2000, 4000]
-    num_steps = [50, 100, 200]
-    memory_size = [100, 200, 400, 600, 800, 1000]
-    batch_size = [0.05, 0.10, 0.25, 0.50, 1]
-    e_start = [1, 0.5]
-    e_finish = [0.05, 0.01]
-    e_decay = [0.1, 0.5, 0.9]
-    dr = [0.9999, 0.999, 0.99, 0.9]
-    lr = [0.1, 0.01, 0.001, 0.0001, 0.00001]
-    layers = [1, 2, 3]
-    nodes = [10, 20, 50, 100, 200]
-    frequency_updates = [1000]
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.n
 
-    creator = TestVariableCreator(
-        num_episodes,
-        num_steps,
-        batch_size,
-        state_dim,
-        action_dim,
-        memory_size,
-        e_start,
-        e_finish,
-        e_decay,
-        dr,
-        lr,
-        layers,
-        nodes,
-        frequency_updates
-    )
+        num_episodes = [500, 1000, 2000]
+        num_steps = [200]
+        memory_size = [1000, 10000]
+        batch_size = [32, 128, 512]
+        e_start = [1, 0.5]
+        e_finish = [0.05, 0.01]
+        e_decay = [0.1, 0.5, 0.9]
+        dr = [0.9999, 0.99, 0.9]
+        lr = [0.001, 0.00001, 0.0000001]
+        layers = [1, 2]
+        nodes = [10, 20, 50]
+        frequency_updates = [1000]
 
-    while True:
-        try:
-            creator.poll().run_experiment(env, agent_constructor)
-        except KeyboardInterrupt as e:
-            break
+        creator = TestVariableCreator(
+            num_episodes,
+            num_steps,
+            batch_size,
+            state_dim,
+            action_dim,
+            memory_size,
+            e_start,
+            e_finish,
+            e_decay,
+            dr,
+            lr,
+            layers,
+            nodes,
+            frequency_updates
+        )
+
+        while True:
+            try:
+                creator.poll().run_experiment(env, agent_constructor)
+            except KeyboardInterrupt as e:
+                break
 
 if __name__ == '__main__':
     for i in range(multiprocessing.cpu_count()):
