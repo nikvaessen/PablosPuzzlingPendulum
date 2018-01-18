@@ -64,6 +64,7 @@ def run_experiments(reward_index):
     dr = 0.99
     amount_layers = 2
     amount_nodes_layer = 40
+    frequency_updates = 1000
 
     parameters = {}
     parameters['num_episodes'] = num_episodes
@@ -79,6 +80,7 @@ def run_experiments(reward_index):
     parameters['discount_rate'] = dr
     parameters['amount_layers'] = amount_layers
     parameters['amount_nodes_layer'] = amount_nodes_layer
+    parameters['frequency_update_target_model'] = frequency_updates
 
     agent = DQNAgent(6, 81,
                      200,
@@ -88,7 +90,8 @@ def run_experiments(reward_index):
                      dr,
                      lr,
                      amount_layers,
-                     (amount_nodes_layer, amount_nodes_layer))
+                     (amount_nodes_layer, amount_nodes_layer),
+                     1000)
 
     with RobotArmEnvironment(reward_function_index=reward_index,
                              reward_function_params=(1 / 6 * np.pi, 2 * np.pi, 1, 10, 0.05, 0.1, 2, 0.001, 1)) as env:
