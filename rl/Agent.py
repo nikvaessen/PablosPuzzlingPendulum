@@ -24,11 +24,11 @@ class Agent:
                  state_size: int,
                  action_size: int,
                  memory_size: int,
-                 epsilon_start: int,
-                 epsilon_finish: int,
+                 epsilon_start: float,
+                 epsilon_finish: float,
                  epsilon_decay_steps: int,
-                 discount_rate: int,
-                 learning_rate: int,
+                 discount_rate: float,
+                 learning_rate: float,
                  amount_layers: int,
                  amount_nodes_layer: tuple):
 
@@ -83,7 +83,8 @@ class DQNAgent(Agent):
                  discount_rate: float,
                  learning_rate: float,
                  amount_layers: int,
-                 amount_nodes_layer: tuple):
+                 amount_nodes_layer: tuple,
+                 fixate_model_frequency: int):
 
         super().__init__(state_size,
                          action_size,
@@ -94,12 +95,14 @@ class DQNAgent(Agent):
                          discount_rate,
                          learning_rate,
                          amount_layers,
-                         amount_nodes_layer)
+                         amount_nodes_layer,
+                         )
 
         self.model = self._build_model()
         self.fixed_model = self._build_model()
         self.acts = 0
-        self.fix_frequency = 1000
+        self.fix_frequency = fixate_model_frequency
+        self.should_fixate = fixate_model_frequency > 1
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
@@ -111,7 +114,7 @@ class DQNAgent(Agent):
             model.add(Dense(self.num_nodes[i], activation='relu',
                             kernel_regularizer=l1(1)))
 
-        model.add(Dense(self.action_size, activation='softmax'))
+        model.add(Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=Adam(lr=self.lr))
 
         return model
@@ -123,7 +126,6 @@ class DQNAgent(Agent):
         if not os.path.isdir("backup"):
             os.makedirs("backup")
         self.model.save_weights("backup/weights_" + str(time.time()))
-
 
     def plot_weights(self):
         f, axarr = plt.subplots(len(self.model.layers))
@@ -144,7 +146,7 @@ class DQNAgent(Agent):
 
     def act(self, state, use_random_chance=True):
         self.acts += 0
-        if self.acts % self.fix_frequency == 0:
+        if self.should_fixate and self.acts % self.fix_frequency == 0:
             self.fix_weights()
 
         if use_random_chance and np.random.rand() <= self.epsilon:
@@ -161,7 +163,7 @@ class DQNAgent(Agent):
         if len(self.memory) < batch_size:
             return
 
-        minibatch = random.sample(self.memory, batch_size) # + random.sample(self.long_memory, batch_size)
+        minibatch = random.sample(self.memory, batch_size)
 
         states = np.zeros((batch_size, self.state_size))
         next_states = np.zeros((batch_size, self.state_size))
@@ -174,7 +176,9 @@ class DQNAgent(Agent):
             next_states[idx, :] = next_state.reshape(1, 6)
 
         # calculate the expected reward
-        P = self.fixed_model.predict(next_states)
+        P = self.should_fixate and self.fixed_model.predict(next_states) or \
+            self.model.predict(next_states)
+
         for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
             target = P[idx]
             if done:
@@ -283,6 +287,7 @@ class ACAgent(Agent):
         saver = tf.train.Saver()
         saver.save(self.session, "tf/backup/{}.ckpt".format(time.time()))
         pass
+
 
 def test():
     state_size = 4

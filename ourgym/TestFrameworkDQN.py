@@ -29,7 +29,8 @@ class TestVariableCreator:
                  discount_rate_options: list,
                  learning_rate_options: list,
                  amount_layers_options: list,
-                 amount_nodes_layer_options: list):
+                 amount_nodes_layer_options: list,
+                 frequency_updates: list):
 
         # running the agent
         self.num_episodes = num_episodes_options
@@ -54,6 +55,7 @@ class TestVariableCreator:
         # parameters for updating model
         self.lr = learning_rate_options
         self.dr = discount_rate_options
+        self.frequency_updates = frequency_updates
 
     def poll(self):
         amount_of_layers = self.get_random_item(self.amount_layers)
@@ -78,7 +80,8 @@ class TestVariableCreator:
             self.get_random_item(self.dr),
             self.get_random_item(self.lr),
             amount_of_layers,
-            amount_of_nodes_list
+            amount_of_nodes_list,
+            self.get_random_item(self.frequency_updates)
         )
 
     @staticmethod
@@ -101,7 +104,9 @@ class TestVariables:
                  discount_rate: float,
                  learning_rate: float,
                  amount_layers: int,
-                 amount_nodes_layer: list):
+                 amount_nodes_layer: list,
+                 frequency_updates):
+
         # running the agent
         self.num_episodes = num_episodes
         self.num_steps = num_steps
@@ -130,6 +135,7 @@ class TestVariables:
         # parameters for updating model
         self.lr = learning_rate
         self.dr = discount_rate
+        self.frequency_updates = frequency_updates
 
     def create_agent(self, agent_constructor):
         return agent_constructor(self.state_size,
@@ -141,7 +147,8 @@ class TestVariables:
                                  self.lr,
                                  self.dr,
                                  self.amount_layers,
-                                 self.amount_nodes_layer)
+                                 self.amount_nodes_layer,
+                                 self.frequency_updates)
 
     def run_experiment(self, env, agent_constructor):
         rh , ah = run(env, self.create_agent(agent_constructor),
@@ -165,6 +172,7 @@ class TestVariables:
         obj['discount_rate'] = self.dr
         obj['amount_layers'] = self.amount_layers
         obj['amount_nodes_layer'] = self.amount_nodes_layer
+        obj['frequency_update_target_model'] = self.frequency_updates
 
         return obj
 
@@ -256,6 +264,7 @@ def run_experiments():
     lr = [0.1, 0.01, 0.001, 0.0001, 0.00001]
     layers = [1, 2, 3]
     nodes = [10, 20, 50, 100, 200]
+    frequency_updates = [1000]
 
     creator = TestVariableCreator(
         num_episodes,
@@ -270,7 +279,8 @@ def run_experiments():
         dr,
         lr,
         layers,
-        nodes
+        nodes,
+        frequency_updates
     )
 
     while True:
