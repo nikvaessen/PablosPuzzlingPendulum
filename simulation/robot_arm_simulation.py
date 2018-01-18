@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append('../')
 
 import numpy as np
@@ -17,12 +18,12 @@ class RobotArmSimulatorParallel(threading.Thread):
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
                  init_state=(
-                     0,  # theta_P
-                     0,  # vtheta_P
-                     pi,  # theta_1
-                     0,  # vtheta_1
-                     pi,  # theta_2
-                     0  # vtheta_2
+                         0,  # theta_P
+                         0,  # vtheta_P
+                         pi,  # theta_1
+                         0,  # vtheta_1
+                         pi,  # theta_2
+                         0  # vtheta_2
                  ),
                  acceleration_control=False
                  ):
@@ -73,25 +74,28 @@ class RobotArmSimulatorParallel(threading.Thread):
                                  [0, self.interval])[1]
             self._state[0] = self._state[0] if 0 <= self._state[0] < 2 * pi else (
                 self._state[0] - math.floor(self._state[0] / (2 * pi)) * 2 * pi if 0 <= self._state[0] else (
-                                                                                                                 1 - math.floor(
-                                                                                                             self._state[
-                                                                                                                 0] / (
-                                                                                                                     2 * pi))) * 2 * pi -
-                                                                                                            self._state[0])
+                                                                                                                    1 - math.floor(
+                                                                                                                self._state[
+                                                                                                                    0] / (
+                                                                                                                        2 * pi))) * 2 * pi -
+                                                                                                            self._state[
+                                                                                                                0])
             self._state[2] = self._state[2] if 0 <= self._state[2] < 2 * pi else (
                 self._state[2] - math.floor(self._state[2] / (2 * pi)) * 2 * pi if 0 <= self._state[2] else (
-                                                                                                                 1 - math.floor(
-                                                                                                             self._state[
-                                                                                                                 2] / (
-                                                                                                                     2 * pi))) * 2 * pi -
-                                                                                                            self._state[2])
+                                                                                                                    1 - math.floor(
+                                                                                                                self._state[
+                                                                                                                    2] / (
+                                                                                                                        2 * pi))) * 2 * pi -
+                                                                                                            self._state[
+                                                                                                                2])
             self._state[4] = self._state[4] if 0 <= self._state[4] < 2 * pi else (
                 self._state[4] - math.floor(self._state[4] / (2 * pi)) * 2 * pi if 0 <= self._state[4] else (
-                                                                                                                 1 - math.floor(
-                                                                                                             self._state[
-                                                                                                                 4] / (
-                                                                                                                     2 * pi))) * 2 * pi -
-                                                                                                            self._state[4])
+                                                                                                                    1 - math.floor(
+                                                                                                                self._state[
+                                                                                                                    4] / (
+                                                                                                                        2 * pi))) * 2 * pi -
+                                                                                                            self._state[
+                                                                                                                4])
 
             if abs(self._state[3]) > 4 * pi:
                 self._state[3] = 4 * pi * np.sign(self._state[3])
@@ -152,12 +156,12 @@ class RobotArmSimulatorSerial:
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
                  init_state=(
-                     0,  # theta_P
-                     0,  # vtheta_P
-                     pi,  # theta_1
-                     0,  # vtheta_1
-                     pi,  # theta_2
-                     0  # vtheta_2
+                         0,  # theta_P
+                         0,  # vtheta_P
+                         pi,  # theta_1
+                         0,  # vtheta_1
+                         pi,  # theta_2
+                         0  # vtheta_2
                  ),
                  acceleration_control=False
                  ):
@@ -285,8 +289,9 @@ class RobotArmEnvironment(gym.Env):
                  b=0.0005,  # damping on pendulum axis
                  g=9.81,  # gravity
                  sim_ticks_per_step=10,
+                 reward_average=False,
                  reward_function_index=0,
-                 reward_function_params=(1/6 * pi, 2 * pi, 1, 1),
+                 reward_function_params=(1 / 6 * pi, 2 * pi, 1, 1),
                  from_json_object=None
                  ):
         super(RobotArmEnvironment, self).__init__()
@@ -300,6 +305,7 @@ class RobotArmEnvironment(gym.Env):
 
         if not from_json_object:
             # reward function stuff
+            self.reward_average = reward_average
             self.reward_function_index = reward_function_index
             self.reward_function_params = reward_function_params
             self.reward_function = self.__get_reward_function(self.reward_function_index, self.reward_function_params)
@@ -311,6 +317,10 @@ class RobotArmEnvironment(gym.Env):
             self.simulation.start()
         else:
             # reward function stuff
+            if 'average' in from_json_object['function'].keys():
+                self.reward_average = from_json_object['reward_function']['average']
+            else:
+                self.reward_average = reward_average
             self.reward_function_index = from_json_object['reward_function']['index']
             self.reward_function_params = from_json_object['reward_function']['parameters']
             self.reward_function = self.__get_reward_function(self.reward_function_index, self.reward_function_params)
@@ -367,8 +377,14 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.current_target = np.array(actual_action)
         something_small = 0.0000001
 
+        reward_weighted_sum = 0
+        weight_steps = 1.0 / self.sim_ticks_per_step
+        current_weight = weight_steps
         while True:
             time.sleep(something_small)
+            if self.reward_average:
+                reward_weighted_sum += current_weight * self.__reward(self.simulation.state)
+                current_weight += weight_steps
             if self.simulation.get_counter() >= self.sim_ticks_per_step:
                 break
 
@@ -378,7 +394,9 @@ class RobotArmEnvironment(gym.Env):
         #       it may not be possible to do a swing-up at all
 
         state_after_action = self.simulation.state
-        return self.__normalize_state(np.array(state_after_action)), self.__reward(state_after_action), False, {}
+        return self.__normalize_state(np.array(state_after_action)), \
+               reward_weighted_sum if self.reward_average else self.__reward(state_after_action), \
+               False, {}
 
     def _render(self, mode='human', close=False):
         if close:
@@ -503,6 +521,7 @@ class RobotArmEnvironment(gym.Env):
                     return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
                     return 0
+
             return reward_function
         elif index == 1:
             def reward_function(state):
@@ -510,7 +529,9 @@ class RobotArmEnvironment(gym.Env):
                 if abs(state[0] - pi) <= parameters[0] and abs(state[1]) <= parameters[1]:
                     return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
-                    return -parameters[4] * (parameters[5] * (abs(state[0] - pi) ** parameters[6]) + parameters[7] * (abs(state[1]) ** parameters[8]))
+                    return -parameters[4] * (parameters[5] * (abs(state[0] - pi) ** parameters[6]) + parameters[7] * (
+                            abs(state[1]) ** parameters[8]))
+
             return reward_function
 
     @staticmethod
@@ -558,6 +579,7 @@ class RobotArmEnvironment(gym.Env):
         obj['sim_acceleration_control'] = self.simulation.acceleration_control
         obj['sim_acceleration_limit'] = self.simulation.acceleration_limit
         obj['reward_function'] = {
+            'average': self.reward_average,
             'index': self.reward_function_index,
             'parameters': self.reward_function_params
         }
