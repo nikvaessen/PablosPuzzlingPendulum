@@ -1,5 +1,5 @@
 from simulation.robot_arm_simulation import RobotArmEnvironment
-from rl import DQNAgent
+from rl import DQNAgent, ACAgent
 from time import sleep, time
 import numpy as np
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
             agent.replay(int(10))
             print("episode {}/{}, average reward {}, epsilon {}, time taken {}s".format(
-                episode_idx + 1, number_of_episodes, tr, agent.epsilon, time() - ct))
+                episode_idx + 1, number_of_episodes, tr, agent.get_epsilon(), time() - ct))
 
             if episode_idx % 100 == 0:
                 agent.safe()

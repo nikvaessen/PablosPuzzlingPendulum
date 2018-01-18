@@ -205,6 +205,9 @@ class ACAgent(Agent):
                                                discount_rate,
                                                )
 
+    def reset(self):
+        tf.reset_default_graph()
+
     def _get_actor_network_function(self):
         state_dim = self.state_dim
         action_size = self.action_size

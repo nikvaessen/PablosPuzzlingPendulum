@@ -174,6 +174,8 @@ def run(env: gym.Env,
         if len(rewards) == 20 and sum(rewards) == 0:
             break
 
+    agent.reset()
+
     return reward_history_per_episode, action_history_per_episode
 
 
