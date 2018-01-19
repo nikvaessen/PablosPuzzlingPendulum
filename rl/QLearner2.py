@@ -169,13 +169,13 @@ class Learner3(object):
     def __init__(self, env: Env, n, observations: DObservation):
         self.env = env
         self.observations = observations
-        if os.path.exists(self.QFile):
+        #if os.path.exists(self.QFile):
             #if os.path.exists(self.example):
-            self.Q = np.load(self.QFile)
+            #self.Q = np.load(self.QFile)
             #self.Q = np.load(self.example)
-            print("Loaded q table from memory")
-        else:
-            self.Q = np.zeros(observations.observations + (n,))
+           #print("Loaded q table from memory")
+        #else:
+        self.Q = np.zeros(observations.observations + (n,))
 
     def run_epochs(self, epochs, max_movement, lr, gamma):
         for epoch in range(epochs):
@@ -213,4 +213,5 @@ class Learner3(object):
 
             print("Episode: {}\n \t finished after {} movements. With {} of moves random"
                   .format(epoch+1, movements+1, randoms/movements))
-            np.save(self.QFile, self.Q)
+            #np.save(self.QFile, self.Q)
+            return self.Q

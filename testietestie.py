@@ -13,7 +13,7 @@ else:
 if __name__ == '__main__':
 
     # Make the object which which we can manipulate the environment
-    arm = RobotArm(usb_port=port)
+    arm = RobotArm(usb_port="/dev/cu.usbserial-A6003X31")
 
     # gym API
     # arm.reset() # sets it back to 90, 90
@@ -28,8 +28,24 @@ if __name__ == '__main__':
     all_states = []
     for i in range(5):
         arm.reset()
-        arm.com.send_command(60, 60) # always sleep a bit after sending a command
-        sleep(0.001)
+        arm.com.send_command(40, 40) # always sleep a bit after sending a command
+        # print('first command')
+        # sleep(0.01)
+        # arm.com.send_command(140, 140) # always sleep a bit after sending a command
+        # print('second command')
+        # sleep(0.00001)
+        # arm.com.send_command(60, 60) # always sleep a bit after sending a command
+        # print('third command')
+        # sleep(0.00001)
+
+        #arm.step(31)
+        print(1)
+        #arm.step(41)
+        print(2)
+        #arm.step(51)
+        print(3)
+        #arm.step(61)
+        print(4)
 
         current_time = time()
         states = []
@@ -38,7 +54,7 @@ if __name__ == '__main__':
             states.append(state)
             sleep(0.00000001)
 
-        print(states)
+        #print(states)
         all_states.append(states)
 
         sleep(3)

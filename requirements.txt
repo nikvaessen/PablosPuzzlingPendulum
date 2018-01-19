@@ -1,6 +1,6 @@
 gym
 keras
-serial
+pyserial
 matplotlib
 tensorflow
 h5py
