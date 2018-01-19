@@ -139,6 +139,7 @@ class RobotArm(gym.Env):
         # storage of robot state. These values are used for computing velocity and to determine
         # end of episodes
         self.prev_pendulum_pos = 0
+        self.prev_time = time.time()
         self.step_count = 0
         self.max_step_count = max_step_count
         self.swing_up = False
@@ -437,10 +438,10 @@ class RobotArm(gym.Env):
             if count > 10:
                 print("cannot read state!!! {}".format(state))
 
-        #print(state)
-        pendulum_vel = (state[0] - self.prev_pendulum_pos) * .030
-        #print(pendulum_vel)
+        current_time = time()
+        pendulum_vel = (state[0] - self.prev_pendulum_pos) / (current_time - self.prev_time)
         pendulum_vel = min(10000, max(-10000, pendulum_vel))
+        self.prev_time = current_time
         self.prev_pendulum_pos = state[0]
         self.joint1 = state[1]
         self.joint2 = state[2]
