@@ -1,6 +1,7 @@
 import sys
 from time import sleep, time
 from ourgym import RobotArm
+import numpy as np
 
 if sys.platform == 'linux' or sys.platform == 'linux2':
     port = '/dev/ttyUSB0'
@@ -11,24 +12,34 @@ else:
 
 if __name__ == '__main__':
 
-    arm = RobotArm(usb_port="/dev/cu.usbserial-A6003X31")
+    arm = RobotArm(usb_port=port)
 
-    all_states = []
+    rainsch = 50
 
-    for i in range(50):
+    pendulumVelocity, pendulum, joint1, joint2 = []
+
+    variances = [][]
+
+    for i in range(rainsch):
         arm.reset()
-        #arm.com.send_command(80, 110) # always sleep a bit after sending a command
-        #sleep(0.1)
 
         arm.com.send_command(110, 95)
-        #arm.step(52)
         sleep(0.3)
         arm.com.send_command(50, 120)
         sleep(0.3)
         arm.com.send_command(120, 50)
         sleep(1)
-        print(arm._get_current_state())
 
-        sleep(3)
+        currentState = (arm._get_current_state())
+        pendulum.append(currentState[0])
+        joint1.append(currentState[1])
+        joint2.append(currentState[2])
+        pendulumVelocity.append(currentState[3])
 
+        variances[i].append(np.var(pendulum))
+        variances[i].append(np.var(joint1))
+        variances[i].append(np.var(joint2))
+        variances[i].append(np.var(pendulumVelocity))
+
+        print(variances)
 

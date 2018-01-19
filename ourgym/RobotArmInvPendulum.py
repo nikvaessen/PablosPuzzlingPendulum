@@ -139,7 +139,7 @@ class RobotArm(gym.Env):
         # storage of robot state. These values are used for computing velocity and to determine
         # end of episodes
         self.prev_pendulum_pos = 0
-        self.prev_time = time.time()
+        self.prev_time = time() #Lukas: changed from "time.time() to time() because compiler forced me...
         self.step_count = 0
         self.max_step_count = max_step_count
         self.swing_up = False
