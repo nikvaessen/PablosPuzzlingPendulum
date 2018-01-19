@@ -1,1 +1,1 @@
-from .robot_arm_simulation import RobotArmSimulatorParallel, RobotArmEnvironment
+from .robot_arm_simulation import RobotArmSimulatorParallel, RobotArmEnvironment, RobotArmSimulatorSerial

@@ -36,7 +36,7 @@ class DiscreteActionMap:
         for i in range(len(possible_actions)):
 
             for j in range(len(possible_actions)):
-                #print("init ({}, {}), with index {}".format(possible_actions[i], possible_actions[j], idx))
+                # print("init ({}, {}), with index {}".format(possible_actions[i], possible_actions[j], idx))
                 self.actions[idx] = (possible_actions[i], possible_actions[j])
                 idx += 1
 
@@ -63,7 +63,7 @@ class RelativeDiscreteActionMap(Discrete, DiscreteActionMap):
         idx = 0
         for i in range(lower, upper, stepsize):
             for j in range(lower, upper, stepsize):
-                #print("init ({}, {}), with index {}".format(i, j, idx))
+                # print("init ({}, {}), with index {}".format(i, j, idx))
                 self.actions[idx] = (i, j)
                 idx += 1
         print(self.actions)

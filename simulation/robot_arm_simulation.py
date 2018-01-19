@@ -240,6 +240,10 @@ class RobotArmSimulatorSerial:
     def state(self):
         return self._state + self.observation_noise * np.random.randn(len(self._state))
 
+    @state.setter
+    def state(self, new_state):
+        self._state = new_state
+
     @property
     def current_target(self):
         return self.__current_target
