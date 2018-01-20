@@ -14,11 +14,15 @@ if __name__ == '__main__':
 
     arm = RobotArm(usb_port=port)
 
-    rainsch = 50
+    rainsch = 5
 
-    pendulumVelocity, pendulum, joint1, joint2 = []
+    pendulum = []
+    joint1 = []
+    joint2 = []
+    pendulumVelocity = []
 
-    variances = [][]
+    variances = [[] for i in range(0, rainsch)]
+
 
     for i in range(rainsch):
         arm.reset()
@@ -35,11 +39,27 @@ if __name__ == '__main__':
         joint1.append(currentState[1])
         joint2.append(currentState[2])
         pendulumVelocity.append(currentState[3])
+        variances[i].append([np.var(pendulum), np.var(joint1), np.var(joint2), np.var(pendulumVelocity)])
 
-        variances[i].append(np.var(pendulum))
-        variances[i].append(np.var(joint1))
-        variances[i].append(np.var(joint2))
-        variances[i].append(np.var(pendulumVelocity))
+        print(currentState)
+        #print(np.var(currentState))
+        print(variances[i])
+        print("\n")
 
-        print(variances)
+        with open("variances.txt", "w") as file:
+            file.write("##This file contains the variances after each run. Last entry is significant##\n")
+            file.write("##Pendulum/Joint1/Joint2/Pendulum_velocity##\n")
+            for obs in variances:
+                file.write(str(obs))
+                file.write("\n")
+            file.flush()
+
+        with open("raw_readings.txt", "w") as file:
+            file.write("##This file contains RAW potentiometer readings##\n")
+            file.write("##Pendulum/Joint1/Joint2/Pendulum_velocity##\n")
+            for obs in currentState:
+                file.write(str(obs))
+                file.write("\n")
+            file.flush()
+
 
