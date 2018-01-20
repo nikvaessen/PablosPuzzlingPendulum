@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     arm = RobotArm(usb_port=port)
 
-    rainsch = 3
+    rainsch = 2
 
     pendulum = []
     joint1 = []
