@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     arm = RobotArm(usb_port=port)
 
-    rainsch = 5
+    rainsch = 3
 
     pendulum = []
     joint1 = []
@@ -23,6 +23,9 @@ if __name__ == '__main__':
 
     variances = [[] for i in range(0, rainsch)]
 
+    with open("readings_for_%sRuns.txt" % rainsch, "w") as file:
+        file.write("## This file contains RAW potentiometer readings and the Variances of the Run\n")
+        file.write("## Structure: Pendulum / Joint1 / Joint2 / Pendulum_velocity\n\n")
 
     for i in range(rainsch):
         arm.reset()
@@ -41,25 +44,21 @@ if __name__ == '__main__':
         pendulumVelocity.append(currentState[3])
         variances[i].append([np.var(pendulum), np.var(joint1), np.var(joint2), np.var(pendulumVelocity)])
 
-        print(currentState)
+        #print("current run: ", currentState)
+        print("Readings run %s: %s" % (i+1, currentState))
         #print(np.var(currentState))
-        print(variances[i])
-        print("\n")
 
-        with open("variances.txt", "w") as file:
-            file.write("##This file contains the variances after each run. Last entry is significant##\n")
-            file.write("##Pendulum/Joint1/Joint2/Pendulum_velocity##\n")
-            for obs in variances:
-                file.write(str(obs))
-                file.write("\n")
-            file.flush()
-
-        with open("raw_readings.txt", "w") as file:
-            file.write("##This file contains RAW potentiometer readings##\n")
-            file.write("##Pendulum/Joint1/Joint2/Pendulum_velocity##\n")
+        with open("readings_for_%sRuns.txt" % rainsch, "a") as file:
             for obs in currentState:
                 file.write(str(obs))
-                file.write("\n")
-            file.flush()
+                file.write("\t")
+            file.write("\n")
 
+    print("Variances: ", variances[len(variances)-1])
 
+    with open("readings_for_%sRuns.txt" % rainsch, "a") as file:
+        file.write("No. runs: %s. Variances: " % rainsch)
+        for obs in variances[len(variances)-1]:
+            file.write(str(obs))
+            file.write("\t")
+        file.flush()
