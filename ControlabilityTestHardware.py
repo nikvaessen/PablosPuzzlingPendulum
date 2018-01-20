@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     arm = RobotArm(usb_port=port)
 
-    rainsch = 2
+    rainsch = 100
 
     pendulum = []
     joint1 = []
@@ -35,6 +35,20 @@ if __name__ == '__main__':
         arm.com.send_command(50, 120)
         sleep(0.3)
         arm.com.send_command(120, 50)
+        sleep(0.3)
+        arm.com.send_command(120, 55)
+        sleep(0.3)
+        arm.com.send_command(50, 120)
+        sleep(0.3)
+        arm.com.send_command(120, 50)
+        sleep(0.3)
+        arm.com.send_command(110, 95)
+        sleep(0.3)
+        arm.com.send_command(50, 120)
+        sleep(0.3)
+        arm.com.send_command(120, 50)
+        sleep(0.3)
+        arm.com.send_command(40, 50)
         sleep(1)
 
         currentState = (arm._get_current_state())
