@@ -57,8 +57,5 @@ if __name__ == '__main__':
     print("Variances: ", variances[len(variances)-1])
 
     with open("readings_for_%sRuns.txt" % rainsch, "a") as file:
-        file.write("No. runs: %s. Variances: " % rainsch)
-        for obs in variances[len(variances)-1]:
-            file.write(str(obs))
-            file.write("\t")
+        file.write("\nNo. runs: %s. Variances: %s" % (rainsch, variances[len(variances)-1]))
         file.flush()

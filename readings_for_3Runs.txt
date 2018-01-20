@@ -1,7 +1,0 @@
-## This file contains RAW potentiometer readings and the Variances of the Run
-## Structure: Pendulum / Joint1 / Joint2 / Pendulum_velocity
-
-646.0	438.0	0.0	367.445357103	
-645.0	440.0	0.0	366.860934427	
-645.0	440.0	0.0	366.861879658	
-No. runs: 3. Variances: [0.22222222222222221, 0.88888888888888895, 0.0, 0.075777409643106933]	
