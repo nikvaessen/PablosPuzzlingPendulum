@@ -18,7 +18,7 @@ class RobotArmSimulatorParallel(threading.Thread):
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
                  init_state=(
-                         0,  # theta_P
+                         7/8*pi,  # theta_P
                          0,  # vtheta_P
                          pi,  # theta_1
                          0,  # vtheta_1
@@ -171,7 +171,7 @@ class RobotArmSimulatorSerial:
         self._state = init_state
 
         # pseudo P(ID)A control
-        self.interval = 0.005
+        self.interval = 0.01
         self.step_counter = 0
         self.threshold = 0.001
         self.max_acceleration = 50.0
@@ -182,8 +182,8 @@ class RobotArmSimulatorSerial:
 
         # torque control stuff
         self.acceleration_control = acceleration_control
-        self.acceleration_limit = pi
-        self.current_acceleration = (0, 0)
+        self.acceleration_limit = 1000
+        self.__current_acceleration = (0, 0)
 
         # noise parameters
         self.step_noise = 0
@@ -205,7 +205,7 @@ class RobotArmSimulatorSerial:
             #                                                                        current_error,
             #                                                                        self.control_signal))
         else:
-            self.control_signal = self.current_acceleration
+            self.control_signal = self.__current_acceleration
 
         # integrating to get the new state and "correcting" to remain within the range 0-2pi
         self._state = \
@@ -223,10 +223,10 @@ class RobotArmSimulatorSerial:
 
         if abs(self._state[3]) > 4 * pi:
             self._state[3] = 4 * pi * np.sign(self._state[3])
-            print("LOWER JOINT CLIPPED, TARGET:", self.__current_target)
+            # print("LOWER JOINT CLIPPED, TARGET:", self.__current_target)
         if abs(self._state[5]) > 4 * pi:
             self._state[5] = 4 * pi * np.sign(self._state[5])
-            print("UPPER JOINT CLIPPED, TARGET:", self.__current_target)
+            # print("UPPER JOINT CLIPPED, TARGET:", self.__current_target)
 
         self.step_counter += 1
 
@@ -235,6 +235,14 @@ class RobotArmSimulatorSerial:
 
     def join(self):
         pass
+
+    @property
+    def current_acceleration(self):
+        return self.__current_acceleration
+
+    @current_acceleration.setter
+    def current_acceleration(self, new_acceleration):
+        self.__current_acceleration = new_acceleration
 
     @property
     def state(self):
@@ -295,7 +303,7 @@ class RobotArmEnvironment(gym.Env):
                  sim_ticks_per_step=10,
                  reward_average=False,
                  reward_function_index=0,
-                 reward_function_params=(1 / 6 * pi, 2 * pi, 1, 1),
+                 reward_function_params=(1/6 * pi, 2 * pi, 1, 1, 0.05, 0.1, 2, 0.001, 1),
                  from_json_object=None
                  ):
         super(RobotArmEnvironment, self).__init__()
@@ -317,7 +325,7 @@ class RobotArmEnvironment(gym.Env):
             # pendulum simulation stuff
             self.params = (M_P, L_P, L_1, L_2, b, g)
             self.sim_ticks_per_step = sim_ticks_per_step
-            self.simulation = RobotArmSimulatorSerial(self.params)
+            self.simulation = RobotArmSimulatorSerial(self.params, acceleration_control=True)
             self.simulation.start()
         else:
             # reward function stuff
@@ -365,9 +373,9 @@ class RobotArmEnvironment(gym.Env):
 
     def _step(self, action, take_action=True):
         actual_action = self.__convert_action(self.action_map.get(action))
-        # print(actual_action)
         state_before_action = self.simulation.state
 
+        # FOR RELATIVE ACTIONS
         # if actual_action[0] + state_before_action[2] < 3 / 4 * pi:
         #     actual_action[0] = 0
         # elif actual_action[0] + state_before_action[2] > 5 / 4 * pi:
@@ -378,7 +386,11 @@ class RobotArmEnvironment(gym.Env):
         # elif actual_action[1] + state_before_action[4] > 5 / 4 * pi:
         #     actual_action[1] = 0
 
-        self.simulation.current_target = np.array(actual_action)
+        # self.simulation.current_target = np.array(actual_action)
+
+        # FOR ACCELERATION CONTROL
+        self.simulation.current_acceleration = self.action_map.get(action)
+
         something_small = 0.0000001
 
         reward_weighted_sum = 0
@@ -391,11 +403,9 @@ class RobotArmEnvironment(gym.Env):
                 current_weight += weight_steps
             if self.simulation.get_counter() >= self.sim_ticks_per_step:
                 break
-
-        # TODO: replace this with advance(3)?
-        # NOTE: for the serial simulation, the interval should be changed depending on how many
-        #       states are being observed/how many steps the simulation is advanced; otherwise
-        #       it may not be possible to do a swing-up at all
+            # NOTE: for the serial simulation, the interval should be changed depending on how many
+            #       states are being observed/how many steps the simulation is advanced; otherwise
+            #       it may not be possible to do a swing-up at all
 
         state_after_action = self.simulation.state
         return self.__normalize_state(np.array(state_after_action)), \
@@ -501,7 +511,7 @@ class RobotArmEnvironment(gym.Env):
         # not a nice way of doing this, might want to change it
         self.simulation.terminated = True
         self.simulation.join()
-        self.simulation = RobotArmSimulatorSerial(self.params)
+        self.simulation = RobotArmSimulatorSerial(self.params, acceleration_control=True)
         self.simulation.start()
         return self.__normalize_state(np.array(last_state))
 
@@ -521,7 +531,7 @@ class RobotArmEnvironment(gym.Env):
     def __get_reward_function(index, parameters):
         if index == 0:
             def reward_function(state):
-                if abs(state[0] - pi) <= parameters[0] and abs(state[1]) <= parameters[1]:
+                if abs(state[0] - pi) <= parameters[0]: # and abs(state[1]) <= parameters[1]:
                     return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
                     return 0
