@@ -309,7 +309,8 @@ class RobotArmEnvironment(gym.Env):
                  from_json_object=None,
                  done_function_index=0,
                  done_function_params=(1/6 * pi, 2 * pi),
-                 simulation_init_state=(0, 0, pi, 0, pi, 0)
+                 simulation_init_state=(0, 0, pi, 0, pi, 0),
+                 reset_with_noise=False
                  ):
         super(RobotArmEnvironment, self).__init__()
 
@@ -336,6 +337,7 @@ class RobotArmEnvironment(gym.Env):
             self.params = (M_P, L_P, L_1, L_2, b, g)
             self.simulation_init_state = simulation_init_state
             self.sim_ticks_per_step = sim_ticks_per_step
+            self.reset_with_noise = reset_with_noise
             self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
             self.simulation.start()
         else:
@@ -357,6 +359,7 @@ class RobotArmEnvironment(gym.Env):
             self.params = from_json_object['physical_parameters']
             self.simulation_init_state = from_json_object['simulation_init_state']
             self.sim_ticks_per_step = from_json_object['sim_ticks_per_step']
+            self.reset_with_noise = from_json_object['reset_with_noise']
             self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
             self.simulation.interval = from_json_object['sim_interval']
             self.simulation.threshold = from_json_object['sim_threshold']
@@ -534,7 +537,12 @@ class RobotArmEnvironment(gym.Env):
         # not a nice way of doing this, might want to change it
         self.simulation.terminated = True
         self.simulation.join()
-        self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
+        if self.reset_with_noise:
+            reset_state = self.simulation_init_state
+            reset_state[0] += (np.random.rand() - 0.5) * 0.025
+            self.simulation = RobotArmSimulatorSerial(self.params, reset_state)
+        else:
+            self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
         self.simulation.start()
         return self.__normalize_state(np.array(last_state))
 
@@ -558,7 +566,7 @@ class RobotArmEnvironment(gym.Env):
         if index == 0:
             # generic reward function
             def reward_function(state):
-                if abs(state[0] - pi) <= parameters[0]:  # and abs(state[1]) <= parameters[1]:
+                if abs(state[0] - pi) <= 1/4 * pi:  # and abs(state[1]) <= parameters[1]:
                     return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
                     return 0
@@ -566,7 +574,7 @@ class RobotArmEnvironment(gym.Env):
         elif index == 1:
             # function for balancing only
             def reward_function(state):
-                if abs(state[0] - pi) <= parameters[0]:
+                if abs(state[0] - pi) <= 1/6 * pi:
                     return 1
                 else:
                     return 0
@@ -574,10 +582,10 @@ class RobotArmEnvironment(gym.Env):
         elif index == 2:
             # function for swing-up only
             def reward_function(state):
-                if abs(state[0] - pi) > parameters[0] and abs(state[1]) > parameters[1]:
+                if abs(state[0] - pi) > 1/6 * pi and abs(state[1]) > parameters[1]:
                     return -1
                 else:
-                    return 1
+                    return 100
             return reward_function
 
     @staticmethod
@@ -590,12 +598,12 @@ class RobotArmEnvironment(gym.Env):
         elif index == 1:
             # function for balancing only
             def done_function(state):
-                return not abs(state[0] - pi) <= parameters[0]
+                return not (abs(state[0] - pi) <= 3/8 * pi)
             return done_function
         elif index == 2:
             # function for swing-up only
             def done_function(state):
-                return abs(state[0] - pi) <= parameters[0] and abs(state[1]) < parameters[1]
+                return abs(state[0] - pi) <= 1/6 * pi and abs(state[1]) < parameters[1]
             return done_function
 
     @staticmethod
@@ -636,6 +644,7 @@ class RobotArmEnvironment(gym.Env):
         obj['physical_parameters'] = self.params
         obj['simulation_init_state'] = self.simulation_init_state
         obj['sim_ticks_per_step'] = self.sim_ticks_per_step
+        obj['reset_with_noise'] = self.reset_with_noise
         obj['sim_interval'] = self.simulation.interval
         obj['sim_threshold'] = self.simulation.threshold
         obj['sim_max_acceleration'] = self.simulation.max_acceleration
