@@ -1,5 +1,7 @@
 import sys
 
+from ourgym.RobotArmInvPendulum import SingleMotorActionMap
+
 sys.path.append('../')
 
 import numpy as np
@@ -18,7 +20,7 @@ class RobotArmSimulatorParallel(threading.Thread):
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
                  init_state=(
-                         7/8*pi,  # theta_P
+                         7 / 8 * pi,  # theta_P
                          0,  # vtheta_P
                          pi,  # theta_1
                          0,  # vtheta_1
@@ -171,7 +173,7 @@ class RobotArmSimulatorSerial:
         self._state = init_state
 
         # pseudo P(ID)A control
-        self.interval = 0.01
+        self.interval = 0.005
         self.step_counter = 0
         self.threshold = 0.001
         self.max_acceleration = 50.0
@@ -303,7 +305,7 @@ class RobotArmEnvironment(gym.Env):
                  sim_ticks_per_step=10,
                  reward_average=False,
                  reward_function_index=0,
-                 reward_function_params=(1/6 * pi, 2 * pi, 1, 1, 0.05, 0.1, 2, 0.001, 1),
+                 reward_function_params=(1 / 6 * pi, 2 * pi, 1, 1, 0.05, 0.1, 2, 0.001, 1),
                  from_json_object=None
                  ):
         super(RobotArmEnvironment, self).__init__()
@@ -325,7 +327,7 @@ class RobotArmEnvironment(gym.Env):
             # pendulum simulation stuff
             self.params = (M_P, L_P, L_1, L_2, b, g)
             self.sim_ticks_per_step = sim_ticks_per_step
-            self.simulation = RobotArmSimulatorSerial(self.params, acceleration_control=True)
+            self.simulation = RobotArmSimulatorSerial(self.params)
             self.simulation.start()
         else:
             # reward function stuff
@@ -357,10 +359,16 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.terminated = True
         self.simulation.join()
 
-    # Map the disctete action space to a "real" action
-    action_space = Discrete(81)
-    action_map = AbsoluteDiscreteActionMap(45, 135, 9)
+    # Map the discrete action space to a "real" action
+    # FOR ABSOLUTE ACTIONS FOR BOTH MOTORS
+    # action_space = Discrete(81)
+    # action_map = AbsoluteDiscreteActionMap(45, 135, 9)
 
+    # FOR ABSOLUTE ACTIONS FOR THE LOWER MOTOR ONLY
+    action_space = Discrete(9)
+    action_map = SingleMotorActionMap(9, 45, 135)
+
+    # Observation space (even necessary?, also technically wrong due to normalisation)
     observation_space = Box(np.array([0, 256, 256, 0, 0, 0]), np.array([1023, 768, 768, 1000, 1000, 1000]))
     center = np.array([512, 512, 512])
 
@@ -386,10 +394,10 @@ class RobotArmEnvironment(gym.Env):
         # elif actual_action[1] + state_before_action[4] > 5 / 4 * pi:
         #     actual_action[1] = 0
 
-        # self.simulation.current_target = np.array(actual_action)
+        self.simulation.current_target = np.array(actual_action)
 
         # FOR ACCELERATION CONTROL
-        self.simulation.current_acceleration = self.action_map.get(action)
+        # self.simulation.current_acceleration = self.action_map.get(action)
 
         something_small = 0.0000001
 
@@ -511,7 +519,7 @@ class RobotArmEnvironment(gym.Env):
         # not a nice way of doing this, might want to change it
         self.simulation.terminated = True
         self.simulation.join()
-        self.simulation = RobotArmSimulatorSerial(self.params, acceleration_control=True)
+        self.simulation = RobotArmSimulatorSerial(self.params)
         self.simulation.start()
         return self.__normalize_state(np.array(last_state))
 
@@ -531,7 +539,7 @@ class RobotArmEnvironment(gym.Env):
     def __get_reward_function(index, parameters):
         if index == 0:
             def reward_function(state):
-                if abs(state[0] - pi) <= parameters[0]: # and abs(state[1]) <= parameters[1]:
+                if abs(state[0] - pi) <= parameters[0]:  # and abs(state[1]) <= parameters[1]:
                     return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
                     return 0

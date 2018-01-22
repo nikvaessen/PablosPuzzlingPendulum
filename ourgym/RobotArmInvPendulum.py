@@ -122,6 +122,40 @@ class AbsoluteDiscreteActionMap:
         return obj
 
 
+class SingleMotorActionMap(Discrete):
+
+    def __init__(self, n, min, max):
+        super(SingleMotorActionMap, self).__init__(n)
+
+        self.min = min
+        self.max = max
+
+        delta = (max - min) / (n - 1)
+
+        self.actions = [[int(min + (i * delta)), 90] for i in range(n)]
+
+    def get(self, index):
+        return self.actions[index]
+
+    def getIndex(self, action):
+        idx = 0
+        for a in self.actions:
+            if action == a:
+                return idx
+            else:
+                idx += 1
+
+    def to_json_object(self):
+        obj = {}
+
+        obj['description_in_words_for_simon'] = "actions for single (lower) motor"
+        obj['min_action'] = self.min
+        obj['max_action'] = self.max
+        obj['steps'] = self.n
+        obj['possible_actions'] = self.actions
+
+        return obj
+
 ################################################################################
 # The environment class doing the simulation work
 
