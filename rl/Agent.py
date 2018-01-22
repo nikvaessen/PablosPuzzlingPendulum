@@ -139,24 +139,27 @@ class DQNAgent(Agent):
     def fix_weights(self):
         self.fixed_model.set_weights(self.model.get_weights())
 
-    # def safe(self):
-    #     if not os.path.isdir("backup"):
-    #         os.makedirs("backup")
-    #     self.model.save_weights("backup/weights_" + str(time.time()))
-    #
-    # def plot_weights(self):
-    #     f, axarr = plt.subplots(len(self.model.layers))
-    #     for l, layer in enumerate(self.model.layers):
-    #         weights = layer.get_weights()
-    #         temp = axarr[l].imshow(weights[0], cmap=plt.cm.Blues)
-    #         # plt.colorbar(temp)
-    #     plt.show()
-    #
-    # def load(self, path):
-    #     if not os.path.exists(path):
-    #         raise ValueError("{} does not exist".format(path))
-    #
-    #     self.model.load_weights(path)
+    def save(self, path=None):
+        if not path:
+            if not os.path.isdir("backup"):
+                os.makedirs("backup")
+            self.model.save_weights("backup/weights_" + str(time.time()))
+        else:
+            self.model.save_weights(path)
+
+    def plot_weights(self):
+        f, axarr = plt.subplots(len(self.model.layers))
+        for l, layer in enumerate(self.model.layers):
+            weights = layer.get_weights()
+            temp = axarr[l].imshow(weights[0], cmap=plt.cm.Blues)
+            # plt.colorbar(temp)
+        plt.show()
+
+    def load(self, path):
+        if not os.path.exists(path):
+            raise ValueError("{} does not exist".format(path))
+
+        self.model.load_weights(path)
 
     def remember(self, state, action, reward, next_state, done):
         state = np.array(state).reshape([1, self.state_size])
@@ -184,22 +187,23 @@ class DQNAgent(Agent):
         # return action
 
         if np.random.random() <= self.epsilon:
-            return self.env.action_space.sample()
+            return np.nan, self.env.action_space.sample(), None
         else:
-            return np.argmax(self.model.predict(np.array(state).reshape([1, self.state_size])))
+            prediction = self.model.predict(np.array(state).reshape([1, self.state_size]))
+            return np.max(prediction), np.argmax(prediction), prediction
 
     def replay(self, batch_size, update_epsilon=True, epochs=1):
         # if len(self.memory) < batch_size:
         #     return
         #
-        # minibatch = random.sample(self.memory, batch_size)
+        # mini_batch = random.sample(self.memory, batch_size)
         #
         # states = np.zeros((batch_size, self.state_size))
         # next_states = np.zeros((batch_size, self.state_size))
         # Y = np.zeros((batch_size, self.action_size))
         #
         # # Create X and Y matrices for update
-        # for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
+        # for idx, (state, action, reward, next_state, done) in enumerate(mini_batch):
         #     target = reward
         #     states[idx, :] = state.reshape(1, self.state_size)
         #     next_states[idx, :] = next_state.reshape(1, self.state_size)
@@ -208,7 +212,7 @@ class DQNAgent(Agent):
         # P = self.fixed_model.predict(next_states) if self.should_fixate else \
         #     self.model.predict(next_states)
         #
-        # for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
+        # for idx, (state, action, reward, next_state, done) in enumerate(mini_batch):
         #     target = P[idx]
         #     if done:
         #         target[action] = reward
@@ -223,9 +227,9 @@ class DQNAgent(Agent):
         #     self._update_epsilon()
 
         x_batch, y_batch = [], []
-        minibatch = random.sample(
+        mini_batch = random.sample(
             self.memory, min(len(self.memory), batch_size))
-        for state, action, reward, next_state, done in minibatch:
+        for state, action, reward, next_state, done in mini_batch:
             y_target = self.model.predict(state)
             y_target[0][action] = reward if done else reward + self.dr * np.max(self.model.predict(next_state)[0])
             x_batch.append(state[0])
@@ -233,9 +237,9 @@ class DQNAgent(Agent):
 
         self.model.fit(np.array(x_batch), np.array(y_batch), batch_size=len(x_batch), verbose=0)
 
-        # self._update_epsilon()
-        if self.epsilon > self.epsilon_min:
-            self.epsilon = self.epsilon * 0.995
+        self._update_epsilon()
+        # if self.epsilon > self.epsilon_min:
+        #     self.epsilon = self.epsilon * 0.995
 
     def anneal_exploration(self):
         self._update_epsilon()

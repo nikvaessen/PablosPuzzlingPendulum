@@ -1,5 +1,13 @@
+import re
 import sys
 import os
+
+from gym.spaces import Discrete
+
+from ourgym import AbsoluteDiscreteActionMap
+from rl import DQNAgent
+from simulation import RobotArmEnvironment
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import gym
@@ -9,294 +17,154 @@ import random
 import uuid
 import errno
 import multiprocessing
-import numpy as pi
+import numpy as np
 
-from queue import deque
-
-
-class TestVariableCreator:
-
-    def __init__(self,
-                 num_episodes_options: list,
-                 num_steps_options: list,
-                 batchsize_options: list,
-                 state_size: int,
-                 action_size: int,
-                 memory_size_options: list,
-                 epsilon_start_options: list,
-                 epsilon_finish_options: list,
-                 epsilon_decay_steps_options: list,
-                 discount_rate_options: list,
-                 learning_rate_options: list,
-                 amount_layers_options: list,
-                 amount_nodes_layer_options: list,
-                 frequency_updates: list):
-
-        # running the agent
-        self.num_episodes = num_episodes_options
-        self.num_steps = num_steps_options
-        self.batchsize_options = batchsize_options
-
-        # model size
-        self.state_size = state_size
-        self.action_size = action_size
-
-        self.amount_layers = amount_layers_options
-        self.amount_nodes_layer = amount_nodes_layer_options
-
-        # memory for updating
-        self.memory_size = memory_size_options
-
-        # exploration
-        self.epsilon_start = epsilon_start_options
-        self.epsilon_min = epsilon_finish_options
-        self.epsilon_decay_per_step = epsilon_decay_steps_options
-
-        # parameters for updating model
-        self.lr = learning_rate_options
-        self.dr = discount_rate_options
-        self.frequency_updates = frequency_updates
-
-    def poll(self):
-        amount_of_layers = self.get_random_item(self.amount_layers)
-        amount_of_nodes_list = [self.get_random_item(self.amount_nodes_layer)
-                                for _ in range(amount_of_layers)]
-
-        num_episodes = self.get_random_item(self.num_episodes)
-        memory_size = self.get_random_item(self.memory_size)
-
-        e_decay = self.get_random_item(self.epsilon_decay_per_step)
-
-        return TestVariables(
-            num_episodes,
-            self.get_random_item(self.num_steps),
-            self.get_random_item(self.batchsize_options),
-            self.state_size,
-            self.action_size,
-            memory_size,
-            self.get_random_item(self.epsilon_start),
-            self.get_random_item(self.epsilon_min),
-            int(e_decay * num_episodes),
-            self.get_random_item(self.dr),
-            self.get_random_item(self.lr),
-            amount_of_layers,
-            amount_of_nodes_list,
-            self.get_random_item(self.frequency_updates)
-        )
-
-    @staticmethod
-    def get_random_item(items):
-        return items[random.randint(0, len(items) - 1)]
+from datetime import datetime
 
 
-class TestVariables:
-
-    def __init__(self,
-                 num_episodes: int,
-                 num_steps: int,
-                 batchsize: int,
-                 state_size: int,
-                 action_size: int,
-                 memory_size: int,
-                 epsilon_start: float,
-                 epsilon_finish: float,
-                 epsilon_decay_steps: int,
-                 discount_rate: float,
-                 learning_rate: float,
-                 amount_layers: int,
-                 amount_nodes_layer: list,
-                 frequency_updates):
-
-        # running the agent
-        self.num_episodes = num_episodes
-        self.num_steps = num_steps
-        self.batchsize = batchsize
-
-        # model size
-        self.state_size = state_size
-        self.action_size = action_size
-
-        if len(amount_nodes_layer) != amount_layers:
-            raise ValueError("length of tuple of amount of nodes per layer "
-                             "should be equal to "
-                             "the amount of required layers")
-
-        self.amount_layers = amount_layers
-        self.amount_nodes_layer = amount_nodes_layer
-
-        # memory for updating
-        self.memory_size = memory_size
-
-        # exploration
-        self.epsilon_start = epsilon_start
-        self.epsilon_min = epsilon_finish
-        self.epsilon_decay_per_step = epsilon_decay_steps
-
-        # parameters for updating model
-        self.lr = learning_rate
-        self.dr = discount_rate
-        self.frequency_updates = frequency_updates
-
-    def create_agent(self, agent_constructor):
-        return agent_constructor(self.state_size,
-                                 self.action_size,
-                                 self.memory_size,
-                                 self.epsilon_start,
-                                 self.epsilon_min,
-                                 self.epsilon_decay_per_step,
-                                 self.lr,
-                                 self.dr,
-                                 self.amount_layers,
-                                 self.amount_nodes_layer,
-                                 self.frequency_updates)
-
-    def run_experiment(self, env, agent_constructor):
-        rh , ah = run(env, self.create_agent(agent_constructor),
-                      self.num_episodes, self.num_steps, self.batchsize)
-
-        save_info(self.to_json_object(), env.action_map.to_json_object(), rh, ah, env.to_json_object())
-
-    def to_json_object(self):
-        obj = {}
-
-        obj['num_episodes'] = self.num_episodes
-        obj['num_steps'] = self.num_steps
-        obj['batchsize'] = self.batchsize
-        obj['state_size'] = self.state_size
-        obj['action_size'] = self.action_size
-        obj['memory_size'] = self.memory_size
-        obj['epsilon_start'] = self.epsilon_start
-        obj['epsilon_min'] = self.epsilon_min
-        obj['epsilon_decay_episodes_required'] = self.epsilon_decay_per_step
-        obj['learning_rate'] = self.lr
-        obj['discount_rate'] = self.dr
-        obj['amount_layers'] = self.amount_layers
-        obj['amount_nodes_layer'] = self.amount_nodes_layer
-        obj['frequency_update_target_model'] = self.frequency_updates
-
-        return obj
-
-
-def run(env: gym.Env,
-        agent,
+def run(env: RobotArmEnvironment,
+        agent: DQNAgent,
         num_episodes: int,
         max_num_steps: int,
-        batchsize: int):
+        batch_size: int,
+        directory_path: str):
 
-    reward_history_per_episode = []
-    action_history_per_episode = []
-    rewards = deque(maxlen=20)
+    reward_history_file_name = directory_path + "reward.csv"
+    action_history_file_name = directory_path + "action.csv"
+    max_q_history_file_name = directory_path + "max-q.csv"
+    state_history_file_name = directory_path + "state.csv"
 
+    # Parse these files with:
+    # with open(file_name, "r") as f:
+    #     reader = csv.reader(f, delimiter=" ")
+    #     for row in reader:
+    #         for col in row:
+    #             col = ast.literal_eval(col) # (nan values have to be checked for)
+
+    previous = time.time()
     for episode_idx in range(num_episodes):
-        print("{}: episode {:3}/{:3}".format(os.getpid(), episode_idx, num_episodes))
         state = env.reset()
-        reward_history_per_episode.append(list())
-        action_history_per_episode.append(list())
-
 
         for step_idx in range(max_num_steps):
-            #env.render()
-            #time.sleep(1/20)
+            with open(state_history_file_name, "a") as f:
+                f.write(("("+("{}," * 6)+") ").format(*env.simulation.state))
+
             # take an action
-            action = agent.act(state)
-            # print(action, env.action_map.get(action),agent.epsilon)
-            action_history_per_episode[episode_idx].append(env.action_map.get(int(action)))
+            max_q, action, prediction = agent.act(state)
+
+            with open(max_q_history_file_name, "a") as f:
+                f.write("{} ".format(max_q))
+            with open(action_history_file_name, "a") as f:
+                f.write("({},{}) ".format(env.action_map.get(int(action))[0], env.action_map.get(int(action))[1]))
 
             # observe effect of action and remember
             new_state, reward, done, info = env.step(action)
             agent.remember(state, action, reward, new_state, done)
-            reward_history_per_episode[episode_idx].append(float(reward))
+            with open(reward_history_file_name, "a") as f:
+                f.write("{} ".format(float(reward)))
+
             # store new state
             state = new_state
 
-            agent.replay(batchsize)
+        agent.replay(batch_size)
 
-        agent._update_epsilon()
+        # new line in all data files
+        with open(action_history_file_name, "a") as f:
+            f.write("\n")
+        with open(reward_history_file_name, "a") as f:
+            f.write("\n")
+        with open(max_q_history_file_name, "a") as f:
+            f.write("\n")
+        with open(state_history_file_name, "a") as f:
+            f.write(("(" + ("{}," * 6) + ") \n").format(*env.simulation.state))
+
+        if episode_idx % 50 == 0:
+            agent.save(directory_path + "weights-ep-{}".format(episode_idx))
+
+        current = time.time()
+        print("{}: episode {:3}/{:3} completed in {:4}s".format(os.getpid(), episode_idx, num_episodes, current - previous))
+        previous = current
+        # agent._update_epsilon()
         # check if last 20 episodes have had a reward of 0
-        s = sum(reward_history_per_episode[episode_idx])
-        rewards.append(s)
-        if len(rewards) == 20 and sum(rewards) == 0:
-            break
-
-    return reward_history_per_episode, action_history_per_episode
-
-
-def save_info(parameters_json, action_map_json, reward_history_list, action_history_list, env_json):
-    filename = "../experiments/{}-{}.json".format(time.time(), uuid.uuid4())
-
-    if not os.path.exists(os.path.dirname(filename)):
-        try:
-            os.makedirs(os.path.dirname(filename))
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-
-    with open(filename, 'w') as fp:
-        object = {}
-
-        object['parameters'] = parameters_json
-        object['action_map'] = action_map_json
-        object['rewards'] = reward_history_list
-        object['actions'] = action_history_list
-        object['environment'] = env_json
-        json.dump(object, fp)
-        print("{}: written json file to {}".format(os.getpid(), fp.name))
+        # s = sum(reward_history_per_episode[episode_idx])
+        # rewards.append(s)
+        # if len(rewards) == 20 and sum(rewards) == 0:
+        #     break
 
 
 def run_experiments():
-    from rl import DQNAgent
-    from simulation import RobotArmEnvironment
-    import numpy as np
+    # changes reward and done function
+    task_index = 0
 
-    reward_index = 1
+    # common parameters
+    num_episodes = 5000
+    num_steps = 200
+    memory_size = 10000
+    batch_size = 64
+    e_start = 1.0
+    e_finish = 0.05
+    e_decay_steps = 4500
+    dr = 0.995
+    lr = 0.0001
+    layers = 2
+    nodes = (20, 20)
+    frequency_updates = 0
 
-    with RobotArmEnvironment(reward_function_index=reward_index,
-                             reward_function_params=(1 / 6 * np.pi, 2 * np.pi, 1, 10, 0.05, 0.1, 2, 0.001, 1)) as env:
-        agent_constructor = DQNAgent
-
-        state_dim = env.observation_space.shape[0]
-        action_dim = env.action_space.n
-
-        num_episodes = [500, 1000, 2000]
-        num_steps = [200]
-        memory_size = [1000, 10000]
-        batch_size = [32, 128, 512]
-        e_start = [1, 0.5]
-        e_finish = [0.05, 0.01]
-        e_decay = [0.1, 0.5, 0.9]
-        dr = [0.9999, 0.99, 0.9]
-        lr = [0.001, 0.00001, 0.0000001]
-        layers = [1, 2]
-        nodes = [10, 20, 50]
-        frequency_updates = [1000]
-
-        creator = TestVariableCreator(
-            num_episodes,
-            num_steps,
-            batch_size,
-            state_dim,
-            action_dim,
-            memory_size,
-            e_start,
-            e_finish,
-            e_decay,
-            dr,
-            lr,
-            layers,
-            nodes,
-            frequency_updates
-        )
-
-        while True:
+    while True:
+        # create directory if it does not exist
+        directory_path = "../experiments_{}/{}_{}/".format(task_index, datetime.now().strftime("%d-%m-%Y_%H-%M-%S"), uuid.uuid4())
+        if not os.path.exists(os.path.dirname(directory_path)):
             try:
-                creator.poll().run_experiment(env, agent_constructor)
-            except KeyboardInterrupt as e:
-                break
+                os.makedirs(os.path.dirname(directory_path))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+
+        try:
+            nr_actions_per_motor = 9
+            lower_bound = 45
+            upper_bound = 135
+            if task_index == 1:
+                nr_actions_per_motor = 9
+                lower_bound = 70
+                upper_bound = 110
+            elif task_index == 2:
+                nr_actions_per_motor = 5
+                lower_bound = 45
+                upper_bound = 135
+
+            env = RobotArmEnvironment(reward_function_index=task_index, done_function_index=task_index)
+            env.action_space = Discrete(nr_actions_per_motor ** 2)
+            env.action_map = AbsoluteDiscreteActionMap(lower_bound, upper_bound, nr_actions_per_motor)
+
+            state_dim = env.observation_space.shape[0]
+            action_dim = env.action_space.n
+
+            agent = DQNAgent(env,
+                             state_dim,
+                             action_dim,
+                             memory_size,
+                             e_start,
+                             e_finish,
+                             e_decay_steps,
+                             dr,
+                             lr,
+                             layers,
+                             nodes,
+                             frequency_updates)
+
+            run(env, agent, num_episodes, num_steps, batch_size, directory_path)
+        except KeyboardInterrupt as e:
+            # for f in os.listdir(os.path.dirname(directory_path)):
+            #     if re.search(file_path, f):
+            #         os.remove(os.path.join(directory_path, f))
+            break
 
 
 if __name__ == '__main__':
-    for i in range(multiprocessing.cpu_count()):
-        p = multiprocessing.Process(target=run_experiments)
-        print("starting process {} with pid {}".format(i, os.getpid()))
-        p.start()
-    print("process {} quited".format(os.getpid()))
+    # for i in range(multiprocessing.cpu_count()):
+    #     p = multiprocessing.Process(target=run_experiments)
+    #     print("Starting process {} with PID {}.".format(i, os.getpid()))
+    #     p.start()
+    # print("Process {} quit.".format(os.getpid()))
+    run_experiments()
