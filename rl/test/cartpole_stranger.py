@@ -17,8 +17,8 @@ class DQNCartPoleSolver():
                  epsilon_log_decay=0.995, alpha=0.01, alpha_decay=0.01, batch_size=64, monitor=False, quiet=False):
 
         self.memory = deque(maxlen=100000)
-        #self.env = gym.make("CartPole-v0")
-        self.env = RobotArmEnvironment(sim_ticks_per_step=3)
+        self.env = gym.make("CartPole-v0")
+        # self.env = RobotArmEnvironment(sim_ticks_per_step=3)
 
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.n

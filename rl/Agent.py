@@ -8,7 +8,7 @@ import os
 
 import tensorflow as tf
 
-from .advanced.AcAgent import PolicyGradientActorCritic
+# from .advanced.AcAgent import PolicyGradientActorCritic
 
 from collections import deque
 from keras.models import Sequential
@@ -58,7 +58,7 @@ class Agent:
 
     def _update_epsilon(self):
         if self.epsilon > self.epsilon_min:
-            self.epsilon *= 0.995
+            self.epsilon -= self.epsilon_decay_per_step
 
     def remember(self, state, action, reward, next_state, done):
         raise NotImplementedError
@@ -87,7 +87,7 @@ class DQNAgent(Agent):
                  amount_nodes_layer: tuple,
                  fixate_model_frequency: int,
                  learning_rate_decay : float=0,
-                 activation: str ='relu',
+                 activation: str ='tanh',
                  use_regularisation: bool = False,
                  regularisation_factor: int=1
                  ):
@@ -117,25 +117,22 @@ class DQNAgent(Agent):
         self.fix_frequency = fixate_model_frequency
         self.should_fixate = fixate_model_frequency > 1
 
-
-
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        # model.add(Dense(self.num_nodes[0], input_dim=self.state_size,
-        #                 activation=self.activation,
-        #                 kernel_regularizer=l1(self.reg_factor) if self.use_regularisation else None))
-        #
-        # for i in range(1, self.num_layers):
-        #     model.add(Dense(self.num_nodes[i], activation=self.activation,
-        #                     kernel_regularizer=l1(self.reg_factor) if self.use_regularisation else None))
-        #
-        # model.add(Dense(self.action_size, activation='linear'))
+        model.add(Dense(self.num_nodes[0], input_dim=self.state_size,
+                        activation=self.activation,
+                        kernel_regularizer=l1(self.reg_factor) if self.use_regularisation else None))
 
+        for i in range(1, self.num_layers):
+            model.add(Dense(self.num_nodes[i], activation=self.activation,
+                            kernel_regularizer=l1(self.reg_factor) if self.use_regularisation else None))
 
-        model.add(Dense(24, input_dim=4, activation='tanh'))
-        model.add(Dense(48, activation='tanh'))
-        model.add(Dense(2, activation='linear'))
+        model.add(Dense(self.action_size, activation='linear'))
+
+        # model.add(Dense(24, input_dim=4, activation='tanh'))
+        # model.add(Dense(48, activation='tanh'))
+        # model.add(Dense(2, activation='linear'))
         model.compile(loss='mse', optimizer=Adam(lr=self.lr, decay=self.lr_decay))
 
         return model
@@ -163,8 +160,8 @@ class DQNAgent(Agent):
     #     self.model.load_weights(path)
 
     def remember(self, state, action, reward, next_state, done):
-        state = np.array(state).reshape([1, 4])
-        next_state = np.array(state).reshape([1, 4])
+        state = np.array(state).reshape([1, self.state_size])
+        next_state = np.array(next_state).reshape([1, self.state_size])
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state, use_random_chance=True, randomly=False, q_values=[]):
@@ -190,7 +187,7 @@ class DQNAgent(Agent):
         if np.random.random() <= self.epsilon:
             return self.env.action_space.sample()
         else:
-            return np.argmax(self.model.predict(state))
+            return np.argmax(self.model.predict(np.array(state).reshape([1, self.state_size])))
 
     def replay(self, batch_size, update_epsilon=True, epochs=1):
         # if len(self.memory) < batch_size:
@@ -237,6 +234,7 @@ class DQNAgent(Agent):
 
         self.model.fit(np.array(x_batch), np.array(y_batch), batch_size=len(x_batch), verbose=0)
 
+        # self._update_epsilon()
         if self.epsilon > self.epsilon_min:
             self.epsilon = self.epsilon * 0.995
 
@@ -342,6 +340,44 @@ class ACAgent(Agent):
         pass
 
 
+def cartpole_test():
+    env = gym.make("CartPole-v0")
+    agent = DQNAgent(env,
+                     env.observation_space.shape[0],
+                     env.action_space.n,
+                     10000,
+                     1.0,
+                     0.05,
+                     600,
+                     0.995,
+                     0.01,
+                     2,
+                     (20, 20),
+                     0,
+                     )
+
+    for e in range(1000):
+        state = env.reset()
+        done = False
+        tr = 0
+        i = 0
+        while not done and i < 200:
+            if e % 100 == 0 or False:
+                env.render()
+                # time.sleep(1)
+
+            action = agent.act(state)
+            next_state, reward, done, _ = env.step(action)
+            agent.remember(state, action, reward, next_state, done)
+            state = next_state
+            tr += reward
+            i += 1
+
+        agent.replay(64)
+        # if e % 100 == 0:
+        print("Episode {}, reward = {}, epsilon = {}".format(e, tr, agent.epsilon))
+
+
 def test():
     state_size = 4
     action_size = 40
@@ -414,7 +450,6 @@ def train_bandit_problem(agent: DQNAgent, state_size, state_low, state_high, act
         agent.replay(50)
 
 
-
 def count_predict_distribution(agent, state_size, state_low, state_high, action_low, action_high):
     # Test if a randomly initialised network returns every possible action
     action_count_map = {n: 0 for n in range(action_low, action_high + 1)}
@@ -428,4 +463,4 @@ def count_predict_distribution(agent, state_size, state_low, state_high, action_
 
 
 if __name__ == '__main__':
-    test()
+    cartpole_test()
