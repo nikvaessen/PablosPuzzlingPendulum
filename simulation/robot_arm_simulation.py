@@ -302,11 +302,14 @@ class RobotArmEnvironment(gym.Env):
                  L_2=0.03,  # upper segment length
                  b=0.0005,  # damping on pendulum axis
                  g=9.81,  # gravity
-                 sim_ticks_per_step=10,
+                 sim_ticks_per_step=6,
                  reward_average=False,
                  reward_function_index=0,
-                 reward_function_params=(1 / 6 * pi, 2 * pi, 1, 1, 0.05, 0.1, 2, 0.001, 1),
-                 from_json_object=None
+                 reward_function_params=(1/6 * pi, 2 * pi, 1, 1, 0.05, 0.1, 2, 0.001, 1),
+                 from_json_object=None,
+                 done_function_index=0,
+                 done_function_params=(1/6 * pi, 2 * pi),
+                 simulation_init_state=(0, 0, pi, 0, pi, 0)
                  ):
         super(RobotArmEnvironment, self).__init__()
 
@@ -324,10 +327,16 @@ class RobotArmEnvironment(gym.Env):
             self.reward_function_params = reward_function_params
             self.reward_function = self.__get_reward_function(self.reward_function_index, self.reward_function_params)
 
+            # done function stuff
+            self.done_function_index = done_function_index
+            self.done_function_params = done_function_params
+            self.done_function = self.__get_done_function(self.done_function_index, self.done_function_params)
+
             # pendulum simulation stuff
             self.params = (M_P, L_P, L_1, L_2, b, g)
+            self.simulation_init_state = simulation_init_state
             self.sim_ticks_per_step = sim_ticks_per_step
-            self.simulation = RobotArmSimulatorSerial(self.params)
+            self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
             self.simulation.start()
         else:
             # reward function stuff
@@ -339,10 +348,16 @@ class RobotArmEnvironment(gym.Env):
             self.reward_function_params = from_json_object['reward_function']['parameters']
             self.reward_function = self.__get_reward_function(self.reward_function_index, self.reward_function_params)
 
+            # done function stuff
+            self.done_function_index = from_json_object['reward_function']['index']
+            self.done_function_params = from_json_object['reward_function']['parameters']
+            self.done_function = self.__get_done_function(self.done_function_index, self.done_function_params)
+
             # pendulum simulation stuff
             self.params = from_json_object['physical_parameters']
+            self.simulation_init_state = from_json_object['simulation_init_state']
             self.sim_ticks_per_step = from_json_object['sim_ticks_per_step']
-            self.simulation = RobotArmSimulatorSerial(self.params)
+            self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
             self.simulation.interval = from_json_object['sim_interval']
             self.simulation.threshold = from_json_object['sim_threshold']
             self.simulation.max_acceleration = from_json_object['sim_max_acceleration']
@@ -418,7 +433,7 @@ class RobotArmEnvironment(gym.Env):
         state_after_action = self.simulation.state
         return self.__normalize_state(np.array(state_after_action)), \
                reward_weighted_sum if self.reward_average else self.__reward(state_after_action), \
-               False, {}
+               self.__done(state_after_action), {}
 
     def _render(self, mode='human', close=False):
         if close:
@@ -519,7 +534,7 @@ class RobotArmEnvironment(gym.Env):
         # not a nice way of doing this, might want to change it
         self.simulation.terminated = True
         self.simulation.join()
-        self.simulation = RobotArmSimulatorSerial(self.params)
+        self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
         self.simulation.start()
         return self.__normalize_state(np.array(last_state))
 
@@ -535,26 +550,53 @@ class RobotArmEnvironment(gym.Env):
         #     return 0
         # return -((state[0]-np.pi)**2 + 0.001*abs(state[1]))
 
+    def __done(self, state):
+        return self.done_function(state)
+
     @staticmethod
     def __get_reward_function(index, parameters):
         if index == 0:
+            # generic reward function
             def reward_function(state):
                 if abs(state[0] - pi) <= parameters[0]:  # and abs(state[1]) <= parameters[1]:
                     return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
                 else:
                     return 0
-
             return reward_function
         elif index == 1:
+            # function for balancing only
             def reward_function(state):
-                # default parameters: (1/6 * np.pi, 2 * np.pi, 1, 10, 0.05, 0.1, 2, 0.001, 1)
-                if abs(state[0] - pi) <= parameters[0] and abs(state[1]) <= parameters[1]:
-                    return (np.e ** -(parameters[2] * abs(state[1]))) * parameters[3]
+                if abs(state[0] - pi) <= parameters[0]:
+                    return 1
                 else:
-                    return -parameters[4] * (parameters[5] * (abs(state[0] - pi) ** parameters[6]) + parameters[7] * (
-                            abs(state[1]) ** parameters[8]))
-
+                    return 0
             return reward_function
+        elif index == 2:
+            # function for swing-up only
+            def reward_function(state):
+                if abs(state[0] - pi) > parameters[0] and abs(state[1]) > parameters[1]:
+                    return -1
+                else:
+                    return 1
+            return reward_function
+
+    @staticmethod
+    def __get_done_function(index, parameters):
+        if index == 0:
+            # generic done function
+            def done_function(state):
+                return False
+            return done_function
+        elif index == 1:
+            # function for balancing only
+            def done_function(state):
+                return not abs(state[0] - pi) <= parameters[0]
+            return done_function
+        elif index == 2:
+            # function for swing-up only
+            def done_function(state):
+                return abs(state[0] - pi) <= parameters[0] and abs(state[1]) < parameters[1]
+            return done_function
 
     @staticmethod
     def __convert_action(realworld_action):
@@ -592,6 +634,7 @@ class RobotArmEnvironment(gym.Env):
         obj = {}
         obj['description'] = "simulation"
         obj['physical_parameters'] = self.params
+        obj['simulation_init_state'] = self.simulation_init_state
         obj['sim_ticks_per_step'] = self.sim_ticks_per_step
         obj['sim_interval'] = self.simulation.interval
         obj['sim_threshold'] = self.simulation.threshold
@@ -604,5 +647,9 @@ class RobotArmEnvironment(gym.Env):
             'average': self.reward_average,
             'index': self.reward_function_index,
             'parameters': self.reward_function_params
+        }
+        obj['done_function'] = {
+            'index': self.done_function_index,
+            'parameters': self.done_function_params
         }
         return obj

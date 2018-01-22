@@ -8,14 +8,13 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 
-from .advanced.AcAgent import PolicyGradientActorCritic
+# from .advanced.AcAgent import PolicyGradientActorCritic
 
 from collections import deque
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.regularizers import l1
-
 
 
 class Agent:
@@ -74,6 +73,7 @@ class Agent:
 class DQNAgent(Agent):
 
     def __init__(self,
+                 env,
                  state_size: int,
                  action_size: int,
                  memory_size: int,
@@ -84,7 +84,12 @@ class DQNAgent(Agent):
                  learning_rate: float,
                  amount_layers: int,
                  amount_nodes_layer: tuple,
-                 fixate_model_frequency: int):
+                 fixate_model_frequency: int,
+                 learning_rate_decay : float=0,
+                 activation: str ='tanh',
+                 use_regularisation: bool = False,
+                 regularisation_factor: int=1
+                 ):
 
         super().__init__(state_size,
                          action_size,
@@ -98,6 +103,13 @@ class DQNAgent(Agent):
                          amount_nodes_layer,
                          )
 
+        self.env = env
+
+        self.lr_decay = learning_rate_decay
+        self.activation = activation
+        self.use_regularisation = use_regularisation
+        self.reg_factor = regularisation_factor
+
         self.model = self._build_model()
         self.fixed_model = self._build_model()
         self.acts = 0
@@ -108,87 +120,125 @@ class DQNAgent(Agent):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
         model.add(Dense(self.num_nodes[0], input_dim=self.state_size,
-                        activation='relu', kernel_regularizer=l1(1)))
+                        activation=self.activation,
+                        kernel_regularizer=l1(self.reg_factor) if self.use_regularisation else None))
 
         for i in range(1, self.num_layers):
-            model.add(Dense(self.num_nodes[i], activation='relu',
-                            kernel_regularizer=l1(1)))
+            model.add(Dense(self.num_nodes[i], activation=self.activation,
+                            kernel_regularizer=l1(self.reg_factor) if self.use_regularisation else None))
 
         model.add(Dense(self.action_size, activation='linear'))
-        model.compile(loss='mse', optimizer=Adam(lr=self.lr))
+
+        # model.add(Dense(24, input_dim=4, activation='tanh'))
+        # model.add(Dense(48, activation='tanh'))
+        # model.add(Dense(2, activation='linear'))
+        model.compile(loss='mse', optimizer=Adam(lr=self.lr, decay=self.lr_decay))
 
         return model
 
     def fix_weights(self):
         self.fixed_model.set_weights(self.model.get_weights())
 
-    def safe(self):
-        if not os.path.isdir("backup"):
-            os.makedirs("backup")
-        self.model.save_weights("backup/weights_" + str(time.time()))
-
-    def plot_weights(self):
-        f, axarr = plt.subplots(len(self.model.layers))
-        for l, layer in enumerate(self.model.layers):
-            weights = layer.get_weights()
-            temp = axarr[l].imshow(weights[0], cmap=plt.cm.Blues)
-            # plt.colorbar(temp)
-        plt.show()
-
-    def load(self, path):
-        if not os.path.exists(path):
-            raise ValueError("{} does not exist".format(path))
-
-        self.model.load_weights(path)
+    # def safe(self):
+    #     if not os.path.isdir("backup"):
+    #         os.makedirs("backup")
+    #     self.model.save_weights("backup/weights_" + str(time.time()))
+    #
+    # def plot_weights(self):
+    #     f, axarr = plt.subplots(len(self.model.layers))
+    #     for l, layer in enumerate(self.model.layers):
+    #         weights = layer.get_weights()
+    #         temp = axarr[l].imshow(weights[0], cmap=plt.cm.Blues)
+    #         # plt.colorbar(temp)
+    #     plt.show()
+    #
+    # def load(self, path):
+    #     if not os.path.exists(path):
+    #         raise ValueError("{} does not exist".format(path))
+    #
+    #     self.model.load_weights(path)
 
     def remember(self, state, action, reward, next_state, done):
+        state = np.array(state).reshape([1, self.state_size])
+        next_state = np.array(next_state).reshape([1, self.state_size])
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state, use_random_chance=True):
-        self.acts += 0
-        if self.should_fixate and self.acts % self.fix_frequency == 0:
-            self.fix_weights()
+    def act(self, state, use_random_chance=True, randomly=False, q_values=[]):
+        # self.acts += 0
+        # if self.should_fixate and self.acts % self.fix_frequency == 0:
+        #     print("fixating")
+        #     self.fix_weights()
+        #
+        # if randomly or (use_random_chance and np.random.rand() <= self.epsilon):
+        #     action = random.randrange(self.action_size)
+        #     # print("Act randomly: {}".format(action))
+        #     return action
+        #
+        # act_values = self.model.predict(state.reshape(1, self.state_size))
+        #
+        # for q in act_values[0]:
+        #     q_values.append(q)
+        #
+        # action = np.argmax(act_values) # returns action
+        # # print("Act non-randomly: {}".format(action))
+        # return action
 
-        if use_random_chance and np.random.rand() <= self.epsilon:
-            action = random.randrange(self.action_size)
-            # print("Act randomly: {}".format(action))
-            return action
+        if np.random.random() <= self.epsilon:
+            return self.env.action_space.sample()
+        else:
+            return np.argmax(self.model.predict(np.array(state).reshape([1, self.state_size])))
 
-        act_values = self.model.predict(state.reshape(1, self.state_size))
-        action = np.argmax(act_values[0]) # returns action
-        # print("Act non-randomly: {}".format(action))
-        return action
+    def replay(self, batch_size, update_epsilon=True, epochs=1):
+        # if len(self.memory) < batch_size:
+        #     return
+        #
+        # minibatch = random.sample(self.memory, batch_size)
+        #
+        # states = np.zeros((batch_size, self.state_size))
+        # next_states = np.zeros((batch_size, self.state_size))
+        # Y = np.zeros((batch_size, self.action_size))
+        #
+        # # Create X and Y matrices for update
+        # for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
+        #     target = reward
+        #     states[idx, :] = state.reshape(1, self.state_size)
+        #     next_states[idx, :] = next_state.reshape(1, self.state_size)
+        #
+        # # calculate the expected reward
+        # P = self.fixed_model.predict(next_states) if self.should_fixate else \
+        #     self.model.predict(next_states)
+        #
+        # for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
+        #     target = P[idx]
+        #     if done:
+        #         target[action] = reward
+        #     else:
+        #         target[action] = reward + self.dr * np.amax(P[idx])
+        #
+        #     Y[idx] = target
+        #
+        # self.model.fit(states, Y, epochs=epochs, verbose=0)
+        #
+        # if update_epsilon:
+        #     self._update_epsilon()
 
-    def replay(self, batch_size):
-        if len(self.memory) < batch_size:
-            return
+        x_batch, y_batch = [], []
+        minibatch = random.sample(
+            self.memory, min(len(self.memory), batch_size))
+        for state, action, reward, next_state, done in minibatch:
+            y_target = self.model.predict(state)
+            y_target[0][action] = reward if done else reward + self.dr * np.max(self.model.predict(next_state)[0])
+            x_batch.append(state[0])
+            y_batch.append(y_target[0])
 
-        minibatch = random.sample(self.memory, batch_size)
+        self.model.fit(np.array(x_batch), np.array(y_batch), batch_size=len(x_batch), verbose=0)
 
-        states = np.zeros((batch_size, self.state_size))
-        next_states = np.zeros((batch_size, self.state_size))
-        Y = np.zeros((batch_size, self.action_size))
+        # self._update_epsilon()
+        if self.epsilon > self.epsilon_min:
+            self.epsilon = self.epsilon * 0.995
 
-        # Create X and Y matrices for update
-        for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
-            target = reward
-            states[idx, :] = state.reshape(1, 6)
-            next_states[idx, :] = next_state.reshape(1, 6)
-
-        # calculate the expected reward
-        P = self.fixed_model.predict(next_states) if self.should_fixate else \
-            self.model.predict(next_states)
-
-        for idx, (state, action, reward, next_state, done) in enumerate(minibatch):
-            target = P[idx]
-            if done:
-                target[action] = reward
-            else:
-                target[action] = reward + self.dr * np.amax(P[idx])
-
-            Y[idx] = target
-
-        self.model.fit(states, Y, epochs=1, verbose=0)
+    def anneal_exploration(self):
+        self._update_epsilon()
 
     def get_epsilon(self):
         return self.epsilon
@@ -361,7 +411,6 @@ def train_bandit_problem(agent: DQNAgent, state_size, state_low, state_high, act
         agent.replay(50)
 
 
-
 def count_predict_distribution(agent, state_size, state_low, state_high, action_low, action_high):
     # Test if a randomly initialised network returns every possible action
     action_count_map = {n: 0 for n in range(action_low, action_high + 1)}
@@ -374,5 +423,43 @@ def count_predict_distribution(agent, state_size, state_low, state_high, action_
     return action_count_map
 
 
+def cartpole_test():
+    env = gym.make("CartPole-v0")
+    agent = DQNAgent(env,
+                     env.observation_space.shape[0],
+                     env.action_space.n,
+                     10000,
+                     1.0,
+                     0.05,
+                     600,
+                     0.995,
+                     0.01,
+                     2,
+                     (20, 20),
+                     0,
+                     )
+
+    for e in range(1000):
+        state = env.reset()
+        done = False
+        tr = 0
+        i = 0
+        while not done and i < 200:
+            if e % 100 == 0 or False:
+                env.render()
+                # time.sleep(1)
+
+            action = agent.act(state)
+            next_state, reward, done, _ = env.step(action)
+            agent.remember(state, action, reward, next_state, done)
+            state = next_state
+            tr += reward
+            i += 1
+
+        agent.replay(64)
+        # if e % 100 == 0:
+        print("Episode {}, reward = {}, epsilon = {}".format(e, tr, agent.epsilon))
+
+
 if __name__ == '__main__':
-    test()
+    cartpole_test()
