@@ -1,6 +1,7 @@
 import re
 import sys
 import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 from gym.spaces import Discrete
 
@@ -162,9 +163,8 @@ def run_experiments():
 
 
 if __name__ == '__main__':
-    # for i in range(multiprocessing.cpu_count()):
-    #     p = multiprocessing.Process(target=run_experiments)
-    #     print("Starting process {} with PID {}.".format(i, os.getpid()))
-    #     p.start()
-    # print("Process {} quit.".format(os.getpid()))
-    run_experiments()
+    for i in range(multiprocessing.cpu_count()):
+        p = multiprocessing.Process(target=run_experiments)
+        print("Starting process {} with PID {}.".format(i, os.getpid()))
+        p.start()
+    print("Process {} quit.".format(os.getpid()))
