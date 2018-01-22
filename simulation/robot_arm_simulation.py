@@ -156,7 +156,7 @@ class RobotArmSimulatorSerial:
     def __init__(self,
                  params,  # (M_P, L_P, L_1, L_2, b, g)
                  init_state=(
-                         0,  # theta_P
+                         pi + np.random.rand() * 0.01,  # theta_P
                          0,  # vtheta_P
                          pi,  # theta_1
                          0,  # vtheta_1
@@ -346,8 +346,8 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.join()
 
     # Map the disctete action space to a "real" action
-    action_space = Discrete(81)
-    action_map = AbsoluteDiscreteActionMap(45, 135, 9)
+    action_map = AbsoluteDiscreteActionMap(70, 110, 15)
+    action_space = Discrete(len(action_map.actions))
 
     observation_space = Box(np.array([0, 256, 256, 0, 0, 0]), np.array([1023, 768, 768, 1000, 1000, 1000]))
     center = np.array([512, 512, 512])
@@ -393,10 +393,13 @@ class RobotArmEnvironment(gym.Env):
         #       states are being observed/how many steps the simulation is advanced; otherwise
         #       it may not be possible to do a swing-up at all
 
+
         state_after_action = self.simulation.state
+        done = not ((5/8*pi) <= state_after_action[0] <= (11/8*pi))
+        #done = False
         return self.__normalize_state(np.array(state_after_action)), \
                reward_weighted_sum if self.reward_average else self.__reward(state_after_action), \
-               False, {}
+               done, {}
 
     def _render(self, mode='human', close=False):
         if close:
