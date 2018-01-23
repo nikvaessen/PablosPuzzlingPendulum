@@ -28,7 +28,8 @@ def run(env: RobotArmEnvironment,
         num_episodes: int,
         max_num_steps: int,
         batch_size: int,
-        directory_path: str):
+        directory_path: str,
+        random_run: bool = False):
 
     reward_history_file_name = directory_path + "reward.csv"
     action_history_file_name = directory_path + "action.csv"
@@ -47,23 +48,28 @@ def run(env: RobotArmEnvironment,
         state = env.reset()
 
         for step_idx in range(max_num_steps):
-            env.render()
-            time.sleep(1 / 60)
-
             with open(state_history_file_name, "a") as f:
                 f.write(("("+("{}," * 6)+") ").format(*env.simulation.state))
 
             # take an action
-            max_q, action, prediction = agent.act(state)
+            if random_run:
+                action = env.action_space.sample()
+            else:
+                max_q, action, prediction = agent.act(state)
 
-            with open(max_q_history_file_name, "a") as f:
-                f.write("{} ".format(max_q))
+            if not random_run:
+                with open(max_q_history_file_name, "a") as f:
+                    f.write("{} ".format(max_q))
+
             with open(action_history_file_name, "a") as f:
                 f.write("({},{}) ".format(env.action_map.get(int(action))[0], env.action_map.get(int(action))[1]))
 
             # observe effect of action and remember
             new_state, reward, done, info = env.step(action)
-            agent.remember(state, action, reward, new_state, done)
+
+            if not random_run:
+                agent.remember(state, action, reward, new_state, done)
+
             with open(reward_history_file_name, "a") as f:
                 f.write("{} ".format(float(reward)))
 
@@ -73,19 +79,21 @@ def run(env: RobotArmEnvironment,
             if done:
                 break
 
-        agent.replay(batch_size)
+        if not random_run:
+            agent.replay(batch_size)
 
         # new line in all data files
         with open(action_history_file_name, "a") as f:
             f.write("\n")
         with open(reward_history_file_name, "a") as f:
             f.write("\n")
-        with open(max_q_history_file_name, "a") as f:
-            f.write("\n")
+        if not random_run:
+            with open(max_q_history_file_name, "a") as f:
+                f.write("\n")
         with open(state_history_file_name, "a") as f:
             f.write(("(" + ("{}," * 6) + ") \n").format(*env.simulation.state))
 
-        if episode_idx % 50 == 0:
+        if not random_run and episode_idx % 50 == 0:
             agent.save(directory_path + "weights-ep-{}".format(episode_idx))
 
         current = time.time()
@@ -102,6 +110,7 @@ def run(env: RobotArmEnvironment,
 def run_experiments(index):
     # changes reward and done function
     task_index = 2
+    random_run = True
 
     # common parameters
     num_episodes = 5000
@@ -117,20 +126,20 @@ def run_experiments(index):
     nodes = (20, 20)
     frequency_updates = 0
 
-    if index % 2 == 0:
-        task_index = 1
-        if index >= 4:
-            num_episodes = 20000
-            e_decay_steps = 18000
-    else:
-        task_index = 2
-        if index >= 4:
-            num_episodes = 20000
-            e_decay_steps = 18000
+    # if index % 2 == 0:
+    #     task_index = 1
+    #     if index >= 4:
+    #         num_episodes = 20000
+    #         e_decay_steps = 18000
+    # else:
+    #     task_index = 2
+    #     if index >= 4:
+    #         num_episodes = 20000
+    #         e_decay_steps = 18000
 
     while True:
         # create directory if it does not exist
-        directory_path = "../experiments_{}_{}/{}_{}/".format(task_index, num_episodes, datetime.now().strftime("%d-%m-%Y_%H-%M-%S"), uuid.uuid4())
+        directory_path = "../experiments_{}_{}/{}_{}/".format(task_index, "random" if random_run else "", datetime.now().strftime("%d-%m-%Y_%H-%M-%S"), uuid.uuid4())
         if not os.path.exists(os.path.dirname(directory_path)):
             try:
                 os.makedirs(os.path.dirname(directory_path))
@@ -178,7 +187,7 @@ def run_experiments(index):
                              nodes,
                              frequency_updates)
 
-            run(env, agent, num_episodes, num_steps, batch_size, directory_path)
+            run(env, agent, num_episodes, num_steps, batch_size, directory_path, random_run)
         except KeyboardInterrupt as e:
             # for f in os.listdir(os.path.dirname(directory_path)):
             #     if re.search(file_path, f):
@@ -187,7 +196,7 @@ def run_experiments(index):
 
 
 if __name__ == '__main__':
-    for i in range(multiprocessing.cpu_count()):
+    for i in range(3):
         p = multiprocessing.Process(target=run_experiments, args=(i,))
         print("Starting process {} with PID {}.".format(i, os.getpid()))
         p.start()
