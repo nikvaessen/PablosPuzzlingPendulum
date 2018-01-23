@@ -99,7 +99,7 @@ def run(env: RobotArmEnvironment,
         #     break
 
 
-def run_experiments():
+def run_experiments(index):
     # changes reward and done function
     task_index = 2
 
@@ -116,6 +116,17 @@ def run_experiments():
     layers = 2
     nodes = (20, 20)
     frequency_updates = 0
+
+    if index % 2 == 0:
+        task_index = 1
+        if index >= 4:
+            num_episodes = 20000
+            e_decay_steps = 18000
+    else:
+        task_index = 2
+        if index >= 4:
+            num_episodes = 20000
+            e_decay_steps = 18000
 
     while True:
         # create directory if it does not exist
@@ -176,9 +187,9 @@ def run_experiments():
 
 
 if __name__ == '__main__':
-    # for i in range(multiprocessing.cpu_count()):
-    #     p = multiprocessing.Process(target=run_experiments)
-    #     print("Starting process {} with PID {}.".format(i, os.getpid()))
-    #     p.start()
-    # print("Process {} quit.".format(os.getpid()))
-    run_experiments()
+    for i in range(multiprocessing.cpu_count()):
+        p = multiprocessing.Process(target=run_experiments, args=(i,))
+        print("Starting process {} with PID {}.".format(i, os.getpid()))
+        p.start()
+    print("Process {} quit.".format(os.getpid()))
+    # run_experiments()
