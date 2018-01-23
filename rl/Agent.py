@@ -11,10 +11,15 @@ import tensorflow as tf
 # from .advanced.AcAgent import PolicyGradientActorCritic
 
 from collections import deque
+
+from gym.spaces import Discrete
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.regularizers import l1
+
+from ourgym import AbsoluteDiscreteActionMap
+from simulation import RobotArmEnvironment
 
 
 class Agent:
@@ -465,5 +470,50 @@ def cartpole_test():
         print("Episode {}, reward = {}, epsilon = {}".format(e, tr, agent.epsilon))
 
 
+def run_without_training_balancing(path):
+    env = RobotArmEnvironment(reward_function_index=1,
+                              done_function_index=1,
+                              simulation_init_state=(np.pi, 0, np.pi, 0, np.pi, 0),
+                              reset_with_noise=True)
+    env.action_space = Discrete(25)
+    env.action_map = AbsoluteDiscreteActionMap(70, 110, 5)
+
+    agent = DQNAgent(env,
+                     env.observation_space.shape[0],
+                     env.action_space.n,
+                     10000,
+                     1.0,
+                     0.05,
+                     600,
+                     0.995,
+                     0.01,
+                     2,
+                     (20, 20),
+                     0)
+
+
+    agent.load(path)
+    agent.epsilon = 0.0
+
+    for e in range(10000):
+        print("Starting episode {}.".format(e))
+        state = env.reset()
+        done = False
+        i = 0
+
+        while i <= 200:
+            env.render()
+            time.sleep(1 / 30)
+
+            # action = np.argmax(agent.model.predict(np.array(state).reshape([1, agent.state_size])))
+            _, action, _ = agent.act(state)
+            print(action)
+            next_state, reward, done, _ = env.step(action)
+            state = next_state
+            i += 1
+
+        print("Ending episode {} after {} steps.\n".format(e, i))
+
+
 if __name__ == '__main__':
-    cartpole_test()
+    run_without_training_balancing("/home/simon/University/Project/SimonsSignificantStatistics/normal-index-2/22-01-2018_23-49-16_808fe23e-786a-437c-a765-6b66200341a6/weights-ep-1500")

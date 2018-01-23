@@ -130,7 +130,7 @@ def run_experiments(index):
 
     while True:
         # create directory if it does not exist
-        directory_path = "../experiments_{}/{}_{}/".format(task_index, datetime.now().strftime("%d-%m-%Y_%H-%M-%S"), uuid.uuid4())
+        directory_path = "../experiments_{}_{}/{}_{}/".format(task_index, num_episodes, datetime.now().strftime("%d-%m-%Y_%H-%M-%S"), uuid.uuid4())
         if not os.path.exists(os.path.dirname(directory_path)):
             try:
                 os.makedirs(os.path.dirname(directory_path))

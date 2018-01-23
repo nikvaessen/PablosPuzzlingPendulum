@@ -582,10 +582,10 @@ class RobotArmEnvironment(gym.Env):
         elif index == 2:
             # function for swing-up only
             def reward_function(state):
-                if abs(state[0] - pi) > 1/6 * pi and abs(state[1]) > parameters[1]:
-                    return -1
-                else:
+                if abs(state[0] - pi) <= 1/6 * pi and abs(state[1]) <= parameters[1]:
                     return 100
+                else:
+                    return -1
             return reward_function
 
     @staticmethod
@@ -603,7 +603,7 @@ class RobotArmEnvironment(gym.Env):
         elif index == 2:
             # function for swing-up only
             def done_function(state):
-                return abs(state[0] - pi) <= 1/6 * pi and abs(state[1]) < parameters[1]
+                return abs(state[0] - pi) <= 1/6 * pi and abs(state[1]) <= parameters[1]
             return done_function
 
     @staticmethod
