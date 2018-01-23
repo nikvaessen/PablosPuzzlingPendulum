@@ -47,6 +47,9 @@ def run(env: RobotArmEnvironment,
         state = env.reset()
 
         for step_idx in range(max_num_steps):
+            env.render()
+            time.sleep(1 / 60)
+
             with open(state_history_file_name, "a") as f:
                 f.write(("("+("{}," * 6)+") ").format(*env.simulation.state))
 
@@ -66,6 +69,9 @@ def run(env: RobotArmEnvironment,
 
             # store new state
             state = new_state
+
+            if done:
+                break
 
         agent.replay(batch_size)
 
@@ -95,7 +101,7 @@ def run(env: RobotArmEnvironment,
 
 def run_experiments():
     # changes reward and done function
-    task_index = 0
+    task_index = 2
 
     # common parameters
     num_episodes = 5000
@@ -125,16 +131,23 @@ def run_experiments():
             nr_actions_per_motor = 9
             lower_bound = 45
             upper_bound = 135
+            simulation_init_state = (0, 0, np.pi, 0, np.pi, 0)
+            reset_with_noise = False
             if task_index == 1:
                 nr_actions_per_motor = 9
                 lower_bound = 70
                 upper_bound = 110
+                simulation_init_state = (np.pi, 0, np.pi, 0, np.pi, 0)
+                reset_with_noise = True
             elif task_index == 2:
                 nr_actions_per_motor = 5
                 lower_bound = 45
                 upper_bound = 135
+                simulation_init_state = (0, 0, np.pi, 0, np.pi, 0)
+                reset_with_noise = False
 
-            env = RobotArmEnvironment(reward_function_index=task_index, done_function_index=task_index)
+            env = RobotArmEnvironment(reward_function_index=task_index, done_function_index=task_index,
+                                      simulation_init_state=simulation_init_state, reset_with_noise=reset_with_noise)
             env.action_space = Discrete(nr_actions_per_motor ** 2)
             env.action_map = AbsoluteDiscreteActionMap(lower_bound, upper_bound, nr_actions_per_motor)
 
@@ -163,8 +176,9 @@ def run_experiments():
 
 
 if __name__ == '__main__':
-    for i in range(multiprocessing.cpu_count()):
-        p = multiprocessing.Process(target=run_experiments)
-        print("Starting process {} with PID {}.".format(i, os.getpid()))
-        p.start()
-    print("Process {} quit.".format(os.getpid()))
+    # for i in range(multiprocessing.cpu_count()):
+    #     p = multiprocessing.Process(target=run_experiments)
+    #     print("Starting process {} with PID {}.".format(i, os.getpid()))
+    #     p.start()
+    # print("Process {} quit.".format(os.getpid()))
+    run_experiments()

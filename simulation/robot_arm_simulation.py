@@ -538,9 +538,9 @@ class RobotArmEnvironment(gym.Env):
         self.simulation.terminated = True
         self.simulation.join()
         if self.reset_with_noise:
-            reset_state = self.simulation_init_state
+            reset_state = list(self.simulation_init_state)
             reset_state[0] += (np.random.rand() - 0.5) * 0.025
-            self.simulation = RobotArmSimulatorSerial(self.params, reset_state)
+            self.simulation = RobotArmSimulatorSerial(self.params, tuple(reset_state))
         else:
             self.simulation = RobotArmSimulatorSerial(self.params, self.simulation_init_state)
         self.simulation.start()
