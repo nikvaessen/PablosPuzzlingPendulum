@@ -268,8 +268,8 @@ class RobotArm(gym.Env):
             corrected_state = self._get_current_state()
             states.append(corrected_state)
 
-            if (self.center_up[0] - 100) <= corrected_state[0] <= (self.center_up[0] + 100) and corrected_state[3] <= 5:
-                print("{}, {} is in center".format(state, corrected_state))
+            if (self.center_up[0] - 100) <= corrected_state[0] <= (self.center_up[0] + 100) and abs(corrected_state[3]) <= 5:
+                print("{}, {} is a swing-up".format(state, corrected_state))
                 self.swing_up = True
 
             sleep(0.005)
@@ -449,7 +449,7 @@ class RobotArm(gym.Env):
                 print("cannot read state!!! {}".format(state))
 
         #print(state)
-        pendulum_vel = (state[0] - self.prev_pendulum_pos) * .030
+        pendulum_vel = (state[0] - self.prev_pendulum_pos)
         #print(pendulum_vel)
         pendulum_vel = min(10000, max(-10000, pendulum_vel))
         self.prev_pendulum_pos = state[0]
@@ -545,6 +545,12 @@ class RobotArmSwingUp(gym.Env):
     # action_map = RelativeDiscreteActionMap(action_space_dim, 50, 131, 20)
     # action_space = Discrete(action_space_dim)
 
+
+    action_space_dim = 81
+    action_space = Discrete(action_space_dim)
+    action_map = AbsoluteDiscreteActionMap(45, 135, 9)
+
+
     # The observation space defines all possible states the environment can
     # take during one episode of a the task.
     # The first value is the position of the pendulum.
@@ -617,21 +623,21 @@ class RobotArmSwingUp(gym.Env):
             corrected_state = self._get_current_state()
             states.append(corrected_state)
 
-            if (self.center_up[0] - 100) <= corrected_state[0] <= (self.center_up[0] + 100):
-                print("{}, {} is in center".format(state, corrected_state))
+            if (self.center_up[0] - 50) <= corrected_state[0] <= (self.center_up[0] + 50) and abs(corrected_state[3]) <= 100:
+                print("{}, {} is a swing-up".format(state, corrected_state))
                 self.swing_up = True
 
             sleep(0.005)
 
-        # see if there was a swing up
         reward = 0
-        done = True if self.step_count >= self.max_step_count else False
+        done = True if self.step_count >= self.max_step_count else self.swing_up
 
-        for st in states:
-            reward = self._reward(st)
-            if reward > -1:
-                done = True
-                break
+        if self.swing_up:
+            reward = 100
+        else:
+            reward = -1
+
+
 
         # update the step counter and get the state
         self.step_count += 1

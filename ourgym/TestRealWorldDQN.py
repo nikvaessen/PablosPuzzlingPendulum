@@ -1,5 +1,5 @@
 import sys
-from ourgym import RobotArm
+from ourgym import RobotArm, RobotArmSwingUp
 from rl import DQNAgent
 
 if __name__ == '__main__':
@@ -11,7 +11,7 @@ if __name__ == '__main__':
     else:
         port = "/dev/cu.usbserial-A6003X31"
 
-    env = RobotArm(port)
+    env = RobotArmSwingUp(port)
 
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
@@ -52,8 +52,7 @@ if __name__ == '__main__':
         for step in range(num_steps):
             action = agent.act(state)[1]
 
-            # print(action, flush=True, end=" ")
-            # print(env.action_map.get(action))
+            print(step, flush=True, end=" ")
             next_state, reward, done, info = env.step(action)
 
             agent.remember(state, action, reward, next_state, done)

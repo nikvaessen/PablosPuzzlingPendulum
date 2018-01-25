@@ -136,8 +136,8 @@ def learn_dqn():
         if len(agent.memory) >= 50:
             agent.replay(50)
 
-        if e % safe_every == 0:
-            agent.safe()
+        # if e % safe_every == 0:
+        #     agent.safe()
 
 
 def agent_non_random(env, agent, max_episode_length, iteration_length, past_action):
@@ -355,4 +355,4 @@ def debug_state_trail(robot):
     robot.reset()
 
 if __name__ == '__main__':
-    learn_dqn()
+    debug_reward()

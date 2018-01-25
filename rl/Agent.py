@@ -242,7 +242,9 @@ class DQNAgent(Agent):
 
         self.model.fit(np.array(x_batch), np.array(y_batch), batch_size=len(x_batch), verbose=0)
 
-        self._update_epsilon()
+        if update_epsilon:
+            self._update_epsilon()
+
         # if self.epsilon > self.epsilon_min:
         #     self.epsilon = self.epsilon * 0.995
 
