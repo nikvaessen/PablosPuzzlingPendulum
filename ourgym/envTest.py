@@ -40,58 +40,68 @@ def learn():
     learner.run_n_episodes(100, 1000)
 
 def learn_dqn():
-    from ourgym import ActionMap
 
-    state_size = 4
-    action_size = 49
-    episodes = 500
-    max_episode_length = 200  # 1000 / (1 / 0.025) = 25 secs
+    num_episodes = 5000
+    num_steps = 200
+    memory_size = 10000
+    batch_size = 64
+    e_start = 1.0
+    e_finish = 0.05
+    e_decay_steps = 4500
+    dr = 0.995
+    lr = 0.0001
+    layers = 2
+    nodes = (20, 20)
+    frequency_updates = 0
+
     iteration_length = 0.030
-    safe_every = 5
-
-    action_map = ActionMap([-30, -15, -5, 0, 5, 15, 30])
-
-    past_action = [90, 90]
 
     weight_file = "" # set manually each time
     weight_path = "backup/" + weight_file
 
     # initialize gym environment and the agent
-    env = RobotArm(port, time_step=0.0015)
+    env = RobotArm(port, time_step=iteration_length)
+
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.n
+
     print("created robot")
-    agent = DQNAgent(state_size, action_size, action_map)
+    agent = DQNAgent(env,
+                     state_dim,
+                     action_dim,
+                     memory_size,
+                     e_start,
+                     e_finish,
+                     e_decay_steps,
+                     dr,
+                     lr,
+                     layers,
+                     nodes,
+                     frequency_updates)
 
     if weight_file is not "":
         agent.load(weight_path)
         print("loaded " + str(weight_path))
 
     # Iterate the environment
-    for e in range(1, episodes + 1):
-        if e % 50 == 0:
-            for i in range(0, 10):
-                print("Going for an epsilon=0 run! Pay attention!!!")
-            past_action = [90, 90]
-            agent_non_random(env, agent, 200, iteration_length, past_action)
-
+    for e in range(1, num_episodes + 1):
         print("Starting episode {}".format(e))
         # reset state in the beginning of each episode
         state = norm_state(env.reset())
-        past_action = [90, 90]
 
         # time_r represents the sum of the reward over the episode
         total_r = 0
-        for moves in range(max_episode_length):
+        for moves in range(num_steps):
             # decide when this iteration should be over
             start_time = time()
             desired_end_time = start_time + iteration_length
 
             # Decide action
-            action = agent.act(state)
+            action = env.action_space.action_map.get(agent.act(state))
 
             # Advance the environment to the next frame based on the action.
             # Reward is bases on the angle of the pendulum
-            real_action = add_action_to_position(action, past_action)
-            next_state, reward, done, _ = env.step(real_action)
+            next_state, reward, done, _ = env.step(action)
             #print(next_state)
             next_state = norm_state(next_state)
             #print(next_state)
@@ -106,7 +116,6 @@ def learn_dqn():
             total_r += reward
             #print("move {}: {}, {}, {}, {}, {}".format(moves + 1, state, action, reward, next_state, done))
             ct = time()
-            past_action = real_action
 
             if ct < desired_end_time:
                 sleep_time = desired_end_time - ct
@@ -117,10 +126,10 @@ def learn_dqn():
                 print("### warning took to long !!!! off by: {}".format(ct - desired_end_time))
 
             # done becomes True when the pendulum was swung up but fell down
-            if done or moves + 1 == max_episode_length:
+            if done or moves + 1 == num_steps:
                 # print the score and break out of the loop
                 print("episode: {}/{}, score: {}, moves: {}, lr: {}"
-                      .format(e, episodes, total_r, moves + 1, agent.epsilon))
+                      .format(e, e, total_r, moves + 1, agent.epsilon))
                 break
 
         # train the agent with the experience of the episode
@@ -346,4 +355,4 @@ def debug_state_trail(robot):
     robot.reset()
 
 if __name__ == '__main__':
-    debug_reward()
+    learn_dqn()

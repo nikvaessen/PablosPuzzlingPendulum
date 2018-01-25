@@ -183,10 +183,15 @@ class RobotArm(gym.Env):
 # Properties which need to be set to create a valid Environment.
 
     # The action space defines all possible actions which can be taken during
-    # one episode of the task.
-    action_space_dim = 169
-    action_map = RelativeDiscreteActionMap(action_space_dim, -30, 31, 5)
+    # # one episode of the task.
+    # action_space_dim = 169
+    # action_map = RelativeDiscreteActionMap(action_space_dim, -30, 31, 5)
+    # action_space = Discrete(action_space_dim)
+
+    action_space_dim = 81
     action_space = Discrete(action_space_dim)
+    action_map = AbsoluteDiscreteActionMap(45, 135, 9)
+
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task.
@@ -251,33 +256,9 @@ class RobotArm(gym.Env):
                 raise ValueError("not a valid action")
 
             command = self.action_map.get(action)
-            at = [self.prev_command[0] + command[0],  self.prev_command[1] + command[1]]
 
-            if at[0] > 140:
-                illegal_action = True
-                at[0] = 140
-            elif at[0] < 40:
-                illegal_action = True
-                at[0] = 40
-
-            if at[1] > 140:
-                illegal_action = True
-                at[1] = 140
-            elif at[1] < 40:
-                illegal_action = True
-                at[1] = 40
-
-            #print(action, command, at, self.prev_command)
-            if at == self.prev_command:
-                print("no_action :)")
-                no_action = True
-
-            if np.random.rand() > 0.5:
-                self.com.send_command(60, 60)
-            else:
-                self.com.send_command(120, 120)
-
-            self.prev_command = at
+            self.com.send_command(command[0], command[1])
+            print("send command {}".format(command))
             sleep(0.005)
 
         st = time()
@@ -287,22 +268,19 @@ class RobotArm(gym.Env):
             corrected_state = self._get_current_state()
             states.append(corrected_state)
 
-            if (self.center_up[0] - 100) <= corrected_state[0] <= (self.center_up[0] + 100):
+            if (self.center_up[0] - 100) <= corrected_state[0] <= (self.center_up[0] + 100) and corrected_state[3] <= 5:
                 print("{}, {} is in center".format(state, corrected_state))
                 self.swing_up = True
 
             sleep(0.005)
 
         reward = 0
-        done = True if self.step_count >= self.max_step_count else False
+        done = True if self.step_count >= self.max_step_count else self.swing_up
 
-        for st in states:
-            r = self._reward(st, no_action, illegal_action)
-            if self.swing_up and r < 0.4:
-                done = True
-                print("swong up and r < 0.4")
-            reward += r
-
+        if self.swing_up:
+            reward = 100
+        else:
+            reward = -1
 
         #sleep(self.time_step) # wait x ms to observe what the effect of the action was on the state
         self.step_count += 1
@@ -354,7 +332,6 @@ class RobotArm(gym.Env):
                     print("### WARNING step took longer than 10 ms")
 
         return return_list
-
 
 
     def _render(self, mode='human', close=False):
@@ -430,6 +407,7 @@ class RobotArm(gym.Env):
         if (self.center_up[0]) - 100 <= corrected_state[0] <= (self.center_up[0] + 100):
             # it is, thus we give a reward between 0 and 1, which is closer to one
             # the slower the velocity
+
             return np.e ** -abs(0.2* corrected_state[3])
         elif no_action and not illegal_action:
             return 0.1/self.num_obs_per_step
@@ -563,9 +541,9 @@ class RobotArmSwingUp(gym.Env):
 
     # The action space defines all possible actions which can be taken during
     # one episode of the task.
-    action_space_dim = 25
-    action_map = RelativeDiscreteActionMap(action_space_dim, 50, 131, 20)
-    action_space = Discrete(action_space_dim)
+    # action_space_dim = 25
+    # action_map = RelativeDiscreteActionMap(action_space_dim, 50, 131, 20)
+    # action_space = Discrete(action_space_dim)
 
     # The observation space defines all possible states the environment can
     # take during one episode of a the task.

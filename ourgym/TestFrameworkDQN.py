@@ -17,6 +17,7 @@ from queue import deque
 class TestVariableCreator:
 
     def __init__(self,
+                 env,
                  num_episodes_options: list,
                  num_steps_options: list,
                  batchsize_options: list,
@@ -32,6 +33,7 @@ class TestVariableCreator:
                  amount_nodes_layer_options: list,
                  frequency_updates: list):
 
+        self.env = env
         # running the agent
         self.num_episodes = num_episodes_options
         self.num_steps = num_steps_options
@@ -68,6 +70,7 @@ class TestVariableCreator:
         e_decay = self.get_random_item(self.epsilon_decay_per_step)
 
         return TestVariables(
+            self.env,
             num_episodes,
             self.get_random_item(self.num_steps),
             self.get_random_item(self.batchsize_options),
@@ -92,6 +95,7 @@ class TestVariableCreator:
 class TestVariables:
 
     def __init__(self,
+                 env,
                  num_episodes: int,
                  num_steps: int,
                  batchsize: int,
@@ -106,7 +110,7 @@ class TestVariables:
                  amount_layers: int,
                  amount_nodes_layer: list,
                  frequency_updates):
-
+        self.env = env
         # running the agent
         self.num_episodes = num_episodes
         self.num_steps = num_steps
@@ -138,7 +142,8 @@ class TestVariables:
         self.frequency_updates = frequency_updates
 
     def create_agent(self, agent_constructor):
-        return agent_constructor(self.state_size,
+        return agent_constructor(self.env,
+                                 self.state_size,
                                  self.action_size,
                                  self.memory_size,
                                  self.epsilon_start,
@@ -195,8 +200,8 @@ def run(env: gym.Env,
 
 
         for step_idx in range(max_num_steps):
-            #env.render()
-            #time.sleep(1/20)
+            env.render()
+            time.sleep(1/20)
             # take an action
             action = agent.act(state)
             # print(action, env.action_map.get(action),agent.epsilon)
@@ -271,6 +276,7 @@ def run_experiments():
         frequency_updates = [1000]
 
         creator = TestVariableCreator(
+            env,
             num_episodes,
             num_steps,
             batch_size,
@@ -294,7 +300,7 @@ def run_experiments():
                 break
 
 if __name__ == '__main__':
-    for i in range(multiprocessing.cpu_count()):
+    for i in range(1):
         p = multiprocessing.Process(target=run_experiments)
         print("starting process {} with pid {}".format(i, os.getpid()))
         p.start()

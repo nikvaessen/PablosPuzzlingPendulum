@@ -51,6 +51,10 @@ def run(env: RobotArmEnvironment,
             with open(state_history_file_name, "a") as f:
                 f.write(("("+("{}," * 6)+") ").format(*env.simulation.state))
 
+            if episode_idx % 100 == 0:
+                env.render()
+                time.sleep(1/10)
+
             # take an action
             if random_run:
                 action = env.action_space.sample()
@@ -109,7 +113,7 @@ def run(env: RobotArmEnvironment,
 
 def run_experiments(index):
     # changes reward and done function
-    task_index = 2
+    task_index = index
     random_run = True
 
     # common parameters
@@ -167,7 +171,7 @@ def run_experiments(index):
                 reset_with_noise = False
 
             env = RobotArmEnvironment(reward_function_index=task_index, done_function_index=task_index,
-                                      simulation_init_state=simulation_init_state, reset_with_noise=reset_with_noise)
+                                      simulation_init_state=simulation_init_state, reset_with_noise=reset_with_noise, sim_ticks_per_step=6)
             env.action_space = Discrete(nr_actions_per_motor ** 2)
             env.action_map = AbsoluteDiscreteActionMap(lower_bound, upper_bound, nr_actions_per_motor)
 
@@ -196,9 +200,10 @@ def run_experiments(index):
 
 
 if __name__ == '__main__':
-    for i in range(3):
-        p = multiprocessing.Process(target=run_experiments, args=(i,))
-        print("Starting process {} with PID {}.".format(i, os.getpid()))
-        p.start()
-    print("Process {} quit.".format(os.getpid()))
-    # run_experiments()
+    run_experiments(0)
+    # for i in range(1):
+    #     p = multiprocessing.Process(target=run_experiments, args=(i,))
+    #     print("Starting process {} with PID {}.".format(i, os.getpid()))
+    #     p.start()
+    # print("Process {} quit.".format(os.getpid()))
+    # # run_experiments()
