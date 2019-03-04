@@ -7,6 +7,10 @@ todo: insert link :)
 
 # Structure of project and repo
 
+The aim of the project was to try to make a robot arm (see picture) swing up and balance a pendulum.
+
+
+
 The repository contains several folders with a specific functionality. 
 
 * `communication` implements the low-level data communication to send commands and receive observations from sensors from an arduino to a pc over USB. 
