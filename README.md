@@ -17,7 +17,7 @@ The repository contains several folders with a specific functionality.
 * `communication` implements the low-level data communication to send commands and receive observations from sensors from an arduino to a pc over USB. 
 * `micro` contains the code running on an arduino, which is required for repaying movement commands to a servo motor and relaying sensor data for motor joint positions and pendulum positions.
 * `mm` stands for mathematical modeling. This folder contains code for simulating the pendulum environment.
-* 'ourgym' implements an openAI gym interface for both the simulation and the "real-world" control of the robot. This makes it easier to test reinforcement learning algorithms on the robot.
+* `ourgym` implements an openAI gym interface for both the simulation and the "real-world" control of the robot. This makes it easier to test reinforcement learning algorithms on the robot.
 * `rl` implements several reinforcement learning algorithms, including "normal" tabular SARSA as well as DQN and actor-critic. 
 * `simulation`should be part of the `ourgym` folder.
 * `vision` has some code experimenting with using a camera to predict the pendulum position. Ultimately not used.
