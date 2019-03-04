@@ -2,14 +2,15 @@
 
 This repository is a final "dump" of an university project (bachelor thesis-level), which aimed at implementing methods to control a robot arm perform a pendulum swing up. As it was a very deadline-driven project, the code commits might not be as clean as desired. The final PDF describing in the project can be found here:
 
-todo: insert link :)
+[github pdf reader](https://github.com/nikvaessen/PablosPuzzlingPendulum/blob/master/article.pdf)  
+[download prompt](https://github.com/nikvaessen/PablosPuzzlingPendulum/raw/master/article.pdf)
 
 
 # Structure of project and repo
 
 The aim of the project was to try to make a robot arm (see picture) swing up and balance a pendulum.
 
-
+![image of robot set up](RobotSetUp.jpeg)
 
 The repository contains several folders with a specific functionality. 
 
